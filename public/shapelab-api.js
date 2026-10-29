@@ -222,7 +222,33 @@
     renderAuth(MSG[st] || "Algo deu errado. Tente de novo.");
   }
 
+  /* Puxar para atualizar (no app instalado o celular não faz isso sozinho) */
+  function pullToRefresh() {
+    const standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+    if (!standalone) return;
+    const el = document.createElement("div"); el.id = "slPull"; el.innerHTML = "<i></i><span>Puxe para atualizar</span>"; document.body.appendChild(el);
+    let y0 = null, d = 0, busy = false;
+    const sheetOpen = () => { const sh = document.getElementById("sheet"); return (sh && !sh.hidden) || document.getElementById("slAuth"); };
+    document.addEventListener("touchstart", e => { if (busy || window.scrollY > 0 || sheetOpen() || e.touches.length > 1) { y0 = null; return; } y0 = e.touches[0].clientY; d = 0; }, {passive: true});
+    document.addEventListener("touchmove", e => {
+      if (y0 == null || busy) return;
+      d = Math.max(0, e.touches[0].clientY - y0);
+      if (window.scrollY > 0) { y0 = null; d = 0; }
+      const k = Math.min(1, d / 90);
+      el.style.opacity = d > 10 ? String(k) : "0"; el.style.transform = `translate(-50%, ${-80 + 80 * k}px)`;
+      el.querySelector("span").textContent = d >= 90 ? "Solte para atualizar" : "Puxe para atualizar";
+      el.querySelector("i").style.transform = `rotate(${d * 3}deg)`;
+    }, {passive: true});
+    document.addEventListener("touchend", () => {
+      if (y0 == null || busy) return;
+      if (d >= 90) { busy = true; el.classList.add("go"); el.querySelector("span").textContent = "Atualizando…"; setTimeout(() => location.reload(), 250); }
+      else { el.style.opacity = "0"; el.style.transform = "translate(-50%,-80px)"; }
+      y0 = null; d = 0;
+    }, {passive: true});
+  }
+
   function boot() {
+    pullToRefresh();
     if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
     if (token() && store.get(K.uid)) return startApp();
     renderAuth();
