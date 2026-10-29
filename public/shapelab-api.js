@@ -228,12 +228,13 @@
     if (!standalone) return;
     const el = document.createElement("div"); el.id = "slPull"; el.innerHTML = "<i></i><span>Puxe para atualizar</span>"; document.body.appendChild(el);
     let y0 = null, d = 0, busy = false;
+    const scrollTop = () => { const sh = document.querySelector(".shell"); return Math.max(window.scrollY, sh ? sh.scrollTop : 0); };
     const sheetOpen = () => { const sh = document.getElementById("sheet"); return (sh && !sh.hidden) || document.getElementById("slAuth"); };
-    document.addEventListener("touchstart", e => { if (busy || window.scrollY > 0 || sheetOpen() || e.touches.length > 1) { y0 = null; return; } y0 = e.touches[0].clientY; d = 0; }, {passive: true});
+    document.addEventListener("touchstart", e => { if (busy || scrollTop() > 0 || sheetOpen() || e.touches.length > 1) { y0 = null; return; } y0 = e.touches[0].clientY; d = 0; }, {passive: true});
     document.addEventListener("touchmove", e => {
       if (y0 == null || busy) return;
       d = Math.max(0, e.touches[0].clientY - y0);
-      if (window.scrollY > 0) { y0 = null; d = 0; }
+      if (scrollTop() > 0) { y0 = null; d = 0; }
       const k = Math.min(1, d / 90);
       el.style.opacity = d > 10 ? String(k) : "0"; el.style.transform = `translate(-50%, ${-80 + 80 * k}px)`;
       el.querySelector("span").textContent = d >= 90 ? "Solte para atualizar" : "Puxe para atualizar";

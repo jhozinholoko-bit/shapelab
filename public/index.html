@@ -466,6 +466,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(51,191,24
 /* dock */
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:50;pointer-events:none;
   padding:0 max(14px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
+/* véu suave atrás do menu de baixo: o conteúdo vai ficando levemente desfocado e escuro ao passar por baixo */
+.dock::before{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--dock-h) + 52px + env(safe-area-inset-bottom,0px));pointer-events:none;z-index:-1;
+  background:linear-gradient(to bottom,rgba(10,10,10,0) 0%,rgba(10,10,10,.35) 45%,rgba(10,10,10,.7) 100%);
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 55%);mask-image:linear-gradient(to bottom,transparent 0%,#000 55%)}
 .dock-in{pointer-events:auto;position:relative;max-width:520px;margin:0 auto;height:var(--dock-h);padding:6px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-radius:999px;
   background:linear-gradient(180deg,rgba(30,38,48,.78),rgba(12,15,20,.86));-webkit-backdrop-filter:blur(20px) saturate(150%);backdrop-filter:blur(20px) saturate(150%);
   border:1px solid rgba(255,255,255,.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 16px 40px rgba(0,0,0,.55)}
@@ -617,7 +622,10 @@ input,select,textarea{font-size:16px!important}
 </style>
 <style>
 html,body{margin:0;overflow-x:hidden;overscroll-behavior-x:none}
-.shell{padding-top:calc(12px + env(safe-area-inset-top))!important}
+/* App travado: a página não rola; só a área do conteúdo rola. Assim a barra do Safari não aparece/some e o menu de baixo fica fixo. */
+html,body{height:100%;overflow:hidden!important}
+.shell{position:fixed!important;top:0;bottom:0;left:0;right:0;max-width:640px;margin:0 auto!important;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:calc(12px + env(safe-area-inset-top))!important;padding-bottom:calc(var(--dock-h) + 60px + env(safe-area-inset-bottom))!important;box-sizing:border-box}
+
 .sheet-panel{max-height:calc(100% - env(safe-area-inset-top) - 8px)!important}
 #slPull{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 6px);z-index:998;transform:translate(-50%,-80px);display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(20,26,34,.95);border:1px solid rgba(51,191,240,.4);color:#EEF6FA;font:600 13px 'Outfit',system-ui,sans-serif;pointer-events:none;transition:opacity .2s;opacity:0}
 #slPull i{width:16px;height:16px;border-radius:50%;border:2px solid #33BFF0;border-top-color:transparent;display:inline-block}
@@ -1583,7 +1591,7 @@ function setTab(t) {
   document.querySelectorAll(".dk").forEach(b => b.classList.toggle("on", b.dataset.t === t));
   const ind = $("#dkInd"); ind.style.setProperty("--i", TABS.indexOf(t)); ind.classList.toggle("rose", t === "coach");
   TABS.forEach(v => $("#v-" + v).hidden = v !== t);
-  renderCurrent(); window.scrollTo(0, 0);
+  renderCurrent(); window.scrollTo(0, 0); { const sh = document.querySelector(".shell"); if (sh) sh.scrollTop = 0; }
 }
 const needGate = () => !S.state.profile.name || !S.state.profile.started;
 function renderCurrent() {
