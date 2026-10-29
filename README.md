@@ -18,7 +18,7 @@ Os dados ficam num banco Supabase (gratuito). Esta versão não tem Coach IA, en
 
 **1. Criar o banco**
 1. Crie uma conta em supabase.com e clique em **New project**.
-2. Abra **SQL Editor → New query**, cole todo o conteúdo de `supabase/schema.sql` e clique em **Run**.
+2. Abra **SQL Editor → New query**, cole todo o conteúdo de `supabase/schema.sql` e clique em **Run**. Pode ser um projeto que você já usa: tudo do ShapeLab tem o prefixo `sl_` e nada do que já existe é alterado.
 3. Em **Project Settings → API**, copie a **Project URL** e a chave **anon public**.
 
 **2. Ligar o app ao banco**

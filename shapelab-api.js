@@ -26,7 +26,7 @@
   async function rpc(fn, args) {
     let r;
     try {
-      r = await fetch(`${BASE}/rest/v1/rpc/${fn}`, {method: "POST", headers: {"Content-Type": "application/json", apikey: KEY, Authorization: "Bearer " + KEY}, body: JSON.stringify(args || {})});
+      r = await fetch(`${BASE}/rest/v1/rpc/sl_${fn}`, {method: "POST", headers: {"Content-Type": "application/json", apikey: KEY, Authorization: "Bearer " + KEY}, body: JSON.stringify(args || {})});
     } catch { const e = new Error("offline"); e.code = "unavailable"; throw e; }
     const txt = await r.text();
     let body = null; try { body = txt ? JSON.parse(txt) : null; } catch { body = txt; }
