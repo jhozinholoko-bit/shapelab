@@ -1,12 +1,11 @@
 /* ShapeLab · camada de conta e dados (versão app)
    - Telas de entrar / criar conta (nome + data de nascimento, PIN só em caso de empate)
-   - Liga o app ao Supabase pelas funções RPC do schema.sql
+   - Liga o app ao servidor do próprio site (/api), no Cloudflare
    - Coach IA desligado nesta versão (sem custo de API) */
 (() => {
   "use strict";
   const CFG = window.SHAPELAB_CONFIG || {};
-  const BASE = String(CFG.supabaseUrl || "").replace(/\/+$/, "");
-  const KEY = String(CFG.supabaseAnonKey || "");
+  const API_BASE = String(CFG.api || "/api").replace(/\/+$/, "");
   const COACH = ""; // Coach IA desligado nesta versão: sem custo de API
   const K = {token: "sl_token", uid: "sl_uid", name: "sl_name", last: "sl_last_uid"};
   const APP_KEYS = ["fv_state", "fv_sessions", "fv_active", "fv_rest", "fv_photos"];
@@ -26,7 +25,7 @@
   async function rpc(fn, args) {
     let r;
     try {
-      r = await fetch(`${BASE}/rest/v1/rpc/sl_${fn}`, {method: "POST", headers: {"Content-Type": "application/json", apikey: KEY, Authorization: "Bearer " + KEY}, body: JSON.stringify(args || {})});
+      r = await fetch(`${API_BASE}/${fn}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(args || {})});
     } catch { const e = new Error("offline"); e.code = "unavailable"; throw e; }
     const txt = await r.text();
     let body = null; try { body = txt ? JSON.parse(txt) : null; } catch { body = txt; }
@@ -80,7 +79,7 @@
     let r;
     try {
       r = await fetch(COACH, {method: "POST", signal: opts && opts.signal,
-        headers: {"Content-Type": "application/json", apikey: KEY, Authorization: "Bearer " + KEY},
+        headers: {"Content-Type": "application/json"},
         body: JSON.stringify({token: token(), messages, system, json: !!json, tier: (opts && opts.modelTier) || "default"})});
     } catch (e) { throw {code: e && e.name === "AbortError" ? "cancelled" : "upstream_error", message: String(e)}; }
     const body = await r.json().catch(() => ({}));
@@ -169,11 +168,11 @@
     const v = id => (document.getElementById(id) || {}).value || "";
     const keep = {n: v("aName"), b: v("aBirth"), p: v("aPin")};
     const remember = document.getElementById("aKeep") ? document.getElementById("aKeep").checked : true;
-    const notCfg = !BASE || !KEY;
+    const notCfg = !API_BASE;
     box.innerHTML = `<div class="pnl hero sl-auth-card">
       <div class="brand-hero"><span class="fx-host" id="authFlask">${logo}</span><p class="hero-t" style="font-size:clamp(40px,12vw,64px)"><span class="t1">shape</span><span class="t2">lab</span></p></div>
       <p class="lede">${mode === "login" ? "Entre com seu nome e data de nascimento." : "Crie sua conta em 10 segundos."}</p>
-      ${notCfg ? `<p class="err">Configuração pendente: preencha o arquivo config.js com a URL e a chave do Supabase.</p>` : ""}
+      ${notCfg ? `<p class="err">Configuração pendente: servidor não encontrado.</p>` : ""}
       <form id="aForm" class="stack" novalidate>
         <label class="fld"><span>Nome ou como quer ser chamado</span><input id="aName" autocomplete="given-name" maxlength="40" required value="${esc(keep.n)}" placeholder="Ex.: Lucas"></label>
         <label class="fld"><span>Data de nascimento</span><input id="aBirth" type="date" required value="${esc(keep.b)}" max="${new Date().toISOString().slice(0, 10)}"></label>

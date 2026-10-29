@@ -1,41 +1,31 @@
-# ShapeLab · versão app
+# ShapeLab
 
 App de treino que roda no navegador do celular e pode ser instalado na tela inicial.
-Os dados ficam num banco Supabase (gratuito). Esta versão não tem Coach IA, então não há custo de API.
+Fica hospedado no **Cloudflare** (grátis): o mesmo lugar serve o app e guarda as contas e os treinos no banco D1.
+Toda mudança enviada para este repositório no GitHub é publicada sozinha.
 
-## O que tem na pasta
+## O que tem aqui
 
-| Arquivo | Para que serve |
+| Pasta / arquivo | Para que serve |
 |---|---|
-| `index.html` | O app |
-| `shapelab-api.js` | Telas de entrar e criar conta, e ligação com o banco |
-| `config.js` | **Você preenche:** endereço e chave do Supabase |
-| `ex/` | Fotos dos exercícios (Free Exercise DB, domínio público) |
-| `manifest.webmanifest`, `sw.js`, `icons/` | Instalação no celular (PWA) |
-| `supabase/schema.sql` | Tabelas e regras de login do banco |
+| `public/` | O app (página, telas de login, fotos dos exercícios, ícones, leitor de PDF) |
+| `src/worker.js` | O servidor: cadastro, login, fichas, treinos e fotos |
+| `wrangler.toml` | Configuração do Cloudflare (nome do app e banco) |
 
-## Como publicar (uns 15 minutos)
+## Publicar (uma vez só)
 
-**1. Criar o banco**
-1. Crie uma conta em supabase.com e clique em **New project**.
-2. Abra **SQL Editor → New query**, cole todo o conteúdo de `supabase/schema.sql` e clique em **Run**. Pode ser um projeto que você já usa: tudo do ShapeLab tem o prefixo `sl_` e nada do que já existe é alterado.
-3. Em **Project Settings → API**, copie a **Project URL** e a chave **anon public**.
+1. Entre em **dash.cloudflare.com** e clique em **Criar aplicativo** (Workers e Pages → Criar).
+2. Escolha **Importar um repositório** (Import a repository), conecte o GitHub e selecione `shapelab`.
+3. Não mude nada nas configurações e clique em **Implantar** (Deploy).
+4. Em 1 ou 2 minutos aparece o link do app, algo como `https://shapelab.SEU-USUARIO.workers.dev`.
 
-**2. Ligar o app ao banco**
-Abra `config.js` e cole os dois valores:
-```js
-window.SHAPELAB_CONFIG = {
-  supabaseUrl: "https://SEU-PROJETO.supabase.co",
-  supabaseAnonKey: "eyJ..."
-};
-```
+O banco é criado sozinho na primeira publicação, e as tabelas na primeira vez que alguém usa o app.
 
-**3. Colocar no ar**
-Entre em app.netlify.com/drop e arraste a pasta inteira (a pasta `supabase` não precisa ir, mas não atrapalha).
-Na Vercel funciona igual: **Add New → Project → upload** da pasta. Você recebe um link `https://...`.
+Depois disso, cada mudança no GitHub atualiza o mesmo link em cerca de 1 minuto. Os dados das contas não se perdem.
 
-**4. Instalar no celular**
-- iPhone (Safari): botão Compartilhar → **Adicionar à Tela de Início**.
+## Instalar no celular
+
+- iPhone (Safari): Compartilhar → **Adicionar à Tela de Início**.
 - Android (Chrome): menu ⋮ → **Instalar app**.
 
 ## Como funciona o login
@@ -43,18 +33,27 @@ Na Vercel funciona igual: **Add New → Project → upload** da pasta. Você rec
 - **Criar conta:** nome, data de nascimento e um PIN de 4 números.
 - **Entrar:** só nome e data. Se existir uma única conta com esse par, entra direto, sem PIN.
 - **Empate:** se houver 2 ou mais contas com o mesmo nome e data, o app pede o PIN e abre a conta certa.
-- Nome não diferencia maiúscula, acento nem espaços extras ("lúcas" = "Lucas").
-- **Manter conectado** marcado: fica logado por 1 ano neste aparelho. Desmarcado: a sessão some ao fechar o navegador (e expira em 12h).
+- O nome não diferencia maiúscula, acento nem espaços extras ("lúcas" = "Lucas").
+- **Manter conectado** marcado: fica logado por 1 ano no aparelho. Desmarcado: a sessão some ao fechar o navegador e expira em 12h.
 - Duas contas com mesmo nome, data **e** PIN não são aceitas.
 
-Proteções que continuam ativas:
-- PIN guardado criptografado (bcrypt), nunca em texto.
-- 5 PINs errados em 15 minutos bloqueiam aquele nome+data por 15 minutos.
-- O app não acessa as tabelas diretamente; tudo passa pelas funções do `schema.sql`.
-- Fotos de até 600 KB cada e ficha de até 1 MB por conta.
+Proteções ativas:
+- O PIN fica guardado com hash, nunca em texto.
+- 5 PINs errados em 15 minutos bloqueiam aquele nome + data por 15 minutos.
+- Os tokens de sessão ficam guardados só como hash.
+- O banco não é acessível de fora. Tudo passa pelo servidor, que confere quem está logado.
+- Limites: ficha de até 1 MB por conta, fotos de até 600 KB cada (máx. 200 por conta).
 
-> **Risco aceito por decisão de produto:** quem souber o nome e a data de nascimento de alguém que não tem "gêmeo" no banco entra na conta dessa pessoa sem PIN. Foi escolhido assim para ter entrada sem atrito. Para endurecer depois, basta exigir o PIN sempre na função `login` do `schema.sql`.
+> **Risco aceito por decisão de produto:** quem souber o nome e a data de nascimento de alguém que não tem "gêmeo" no banco entra na conta dessa pessoa sem PIN. Foi escolhido assim para ter entrada sem atrito. Para endurecer depois, basta exigir o PIN sempre na função `login` de `src/worker.js`.
+
+## Plano grátis do Cloudflare
+
+- 100 mil acessos por dia ao servidor, muito acima do uso de um grupo de amigos.
+- Se passar do limite do dia, o banco para até a meia-noite (horário UTC) e os dados continuam salvos.
+- Não pausa por falta de uso.
 
 ## Limites do navegador
-- Com o app em segundo plano ou a tela bloqueada, o celular não toca o alarme do descanso; o tempo continua contando e o alarme toca ao voltar.
-- Vibração não existe no iPhone pelo navegador.
+
+- Com o app em segundo plano ou a tela bloqueada, o celular não toca o alarme do descanso. O tempo continua contando e o alarme toca ao voltar.
+- No iPhone, com o modo silencioso ligado, os sons do app não tocam. Vibração não existe no iPhone pelo navegador.
+- Fotos dos exercícios: Free Exercise DB (domínio público). 10 exercícios de mobilidade usam animação própria.

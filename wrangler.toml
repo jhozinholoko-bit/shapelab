@@ -1,0 +1,14 @@
+# ShapeLab no Cloudflare: o Worker serve o app (public/) e a API (/api/...).
+name = "shapelab"
+main = "src/worker.js"
+compatibility_date = "2026-09-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+# Banco D1. Na primeira publicação o Cloudflare cria o banco "shapelab-db" sozinho.
+[[d1_databases]]
+binding = "DB"
+database_name = "shapelab-db"
