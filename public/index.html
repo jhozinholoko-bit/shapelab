@@ -628,9 +628,9 @@ html,body{height:100%;overflow:hidden!important}
 
 .sheet-panel{max-height:calc(100% - env(safe-area-inset-top) - 8px)!important}
 #slPull{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 6px);z-index:998;transform:translate(-50%,-80px);display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(20,26,34,.95);border:1px solid rgba(51,191,240,.4);color:#EEF6FA;font:600 13px 'Outfit',system-ui,sans-serif;pointer-events:none;transition:opacity .2s;opacity:0}
-#slPull i{width:16px;height:16px;border-radius:50%;border:2px solid #33BFF0;border-top-color:transparent;display:inline-block}
-#slPull.go i{animation:slspin .7s linear infinite}
-@keyframes slspin{to{transform:rotate(360deg)}}
+#slPull .pull-flask{display:inline-block;width:30px;height:30px;transition:transform .15s}
+#slPull .pull-flask svg{width:30px;height:30px;display:block}
+#slPull{overflow:visible;padding:8px 16px 8px 10px}
 #slAuth{overscroll-behavior:contain;touch-action:pan-y}
 #slAuth input{width:100%;box-sizing:border-box;font-size:16px!important}
 img{max-width:100%}
