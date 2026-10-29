@@ -226,7 +226,7 @@
   function pullToRefresh() {
     const standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
     if (!standalone) return;
-    const el = document.createElement("div"); el.id = "slPull"; el.setAttribute("aria-hidden", "true"); el.innerHTML = `<span class="fx-host pull-flask">${logo}</span>`; document.body.appendChild(el);
+    const el = document.createElement("div"); el.id = "slPull"; el.innerHTML = "<i></i><span>Puxe para atualizar</span>"; document.body.appendChild(el);
     let y0 = null, d = 0, busy = false;
     const scrollTop = () => { const sh = document.querySelector(".shell"); return Math.max(window.scrollY, sh ? sh.scrollTop : 0); };
     const sheetOpen = () => { const sh = document.getElementById("sheet"); return (sh && !sh.hidden) || document.getElementById("slAuth"); };
@@ -237,19 +237,20 @@
       if (scrollTop() > 0) { y0 = null; d = 0; }
       const k = Math.min(1, d / 90);
       el.style.opacity = d > 10 ? String(k) : "0"; el.style.transform = `translate(-50%, ${-80 + 80 * k}px)`;
-      el.querySelector(".pull-flask").style.transform = `rotate(${Math.min(d, 90) / 90 * -14}deg)`;
-      const sh = document.querySelector(".shell"); if (sh) { sh.style.transition = "none"; sh.style.transform = `translateY(${Math.round(k * 64)}px)`; }
+      el.querySelector("span").textContent = d >= 90 ? "Solte para atualizar" : "Puxe para atualizar";
+      el.querySelector("i").style.transform = `rotate(${d * 3}deg)`;
     }, {passive: true});
     document.addEventListener("touchend", () => {
       if (y0 == null || busy) return;
-      if (d >= 90) { busy = true; el.classList.add("go"); el.querySelector(".pull-flask").style.transform = ""; slBubbles(el.querySelector(".pull-flask")); setTimeout(() => location.reload(), 1400); }
-      else { el.style.opacity = "0"; el.style.transform = "translate(-50%,-80px)"; const sh = document.querySelector(".shell"); if (sh) { sh.style.transition = "transform .25s ease"; sh.style.transform = ""; } }
+      if (d >= 90) { busy = true; el.classList.add("go"); el.querySelector("span").textContent = "Atualizando…"; setTimeout(() => location.reload(), 250); }
+      else { el.style.opacity = "0"; el.style.transform = "translate(-50%,-80px)"; }
       y0 = null; d = 0;
     }, {passive: true});
   }
 
   function boot() {
     pullToRefresh();
+    slBubbles(document.getElementById("bootFlaskA"));
     if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
     if (token() && store.get(K.uid)) return startApp();
     renderAuth();

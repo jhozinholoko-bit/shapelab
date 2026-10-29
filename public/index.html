@@ -554,6 +554,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(51,191,24
 /* entrada */
 .gate{margin-top:6vh}
 .gate h1{font-size:22px}
+body.booting .hud-top,body.booting .dock{display:none}
+.boot-fx{min-height:86vh;display:flex;align-items:center;justify-content:center}
+.boot-fx svg{filter:drop-shadow(0 0 14px rgba(51,191,240,.3))}
 /* bolhas do frasco */
 .fx-host{position:relative}
 .fx-layer{position:absolute;inset:0;pointer-events:none;overflow:visible}
@@ -628,9 +631,9 @@ html,body{height:100%;overflow:hidden!important}
 
 .sheet-panel{max-height:calc(100% - env(safe-area-inset-top) - 8px)!important}
 #slPull{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 6px);z-index:998;transform:translate(-50%,-80px);display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(20,26,34,.95);border:1px solid rgba(51,191,240,.4);color:#EEF6FA;font:600 13px 'Outfit',system-ui,sans-serif;pointer-events:none;transition:opacity .2s;opacity:0}
-#slPull .pull-flask{display:inline-block;width:44px;height:44px;transition:transform .15s}
-#slPull .pull-flask svg{width:44px;height:44px;display:block;filter:drop-shadow(0 0 10px rgba(51,191,240,.35))}
-#slPull{overflow:visible;padding:0!important;background:none!important;border:0!important}
+#slPull i{width:16px;height:16px;border-radius:50%;border:2px solid #33BFF0;border-top-color:transparent;display:inline-block}
+#slPull.go i{animation:slspin .7s linear infinite}
+@keyframes slspin{to{transform:rotate(360deg)}}
 #slAuth{overscroll-behavior:contain;touch-action:pan-y}
 #slAuth input{width:100%;box-sizing:border-box;font-size:16px!important}
 img{max-width:100%}
@@ -644,7 +647,8 @@ img{max-width:100%}
 .sl-auth-card .hero-t{margin:0;align-items:center;text-align:center}
 .sl-keep{display:flex;align-items:center;gap:10px;font-size:15px;cursor:pointer}
 .sl-keep input{width:20px;height:20px;accent-color:#007BA7}
-.sl-boot{color:#8FA3B1;font:500 13px 'JetBrains Mono',monospace;letter-spacing:.2em}
+.sl-boot{min-height:70vh;display:flex;align-items:center;justify-content:center;margin:auto}
+.sl-boot svg{filter:drop-shadow(0 0 14px rgba(51,191,240,.3))}
 </style>
 <style>.dock-in{grid-template-columns:repeat(4,minmax(0,1fr))}.dk-ind{width:calc((100% - 12px) / 4)}</style>
 </head>
@@ -698,7 +702,7 @@ img{max-width:100%}
   </div>
 </div>
 <div id="toast" class="toast" hidden role="status"></div>
-<div id="slAuth"><p class="sl-boot">SHAPELAB</p></div>
+<div id="slAuth"><div class="sl-boot" role="img" aria-label="Carregando"><span class="fx-host" id="bootFlaskA"><svg viewBox="0 0 100 100" width="96" height="96" aria-hidden="true"><g clip-path="url(#slClip)"><path d="M0 57 Q12 51 25 57 T50 57 T75 57 T100 57 V100 H0 Z" fill="url(#slLiquid)"/><g fill="#fff"><rect x="40.2" y="71.8" width="19.6" height="2.4" rx="1.2"/><rect x="36.6" y="68" width="3.9" height="10" rx="1.5"/><rect x="59.5" y="68" width="3.9" height="10" rx="1.5"/></g></g><path d="M43 12 V39 L19 82 Q16.5 88 23.5 88 H76.5 Q83.5 88 81 82 L57 39 V12" fill="none" stroke="url(#slGlass)" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/><path d="M37 11 H63" stroke="url(#slGlass)" stroke-width="4" stroke-linecap="round"/></svg></span></div></div>
 <script id="slMain">window.SL_MAIN = function () {
 
 (() => {
@@ -1598,6 +1602,7 @@ function renderCurrent() {
   const gate = S.mode === "pending" || needGate();
   $("#v-gate").hidden = !gate;
   $(".dock").hidden = gate; $("#menuBtn").hidden = gate;
+  document.body.classList.toggle("booting", S.mode === "pending");
   if (gate) { TABS.forEach(v => $("#v-" + v).hidden = true); renderGate(); return; }
   TABS.forEach(v => $("#v-" + v).hidden = v !== tab);
   $("#liveDot").hidden = !active;
@@ -1693,7 +1698,8 @@ function symbol(size) {
 let gateStep = 0;
 function renderGate() {
   const v = $("#v-gate"), p = S.state.profile;
-  if (S.mode === "pending") { v.innerHTML = `<div class="gate gate-c hero brand-hero">${symbol(84)}<p class="hero-t"><span class="t1">shape</span><span class="t2">lab</span></p><p class="kicker caret">Conectando à sua conta</p></div>`; return; }
+  document.body.classList.toggle("booting", S.mode === "pending");
+  if (S.mode === "pending") { v.innerHTML = `<div class="boot-fx" role="img" aria-label="Carregando"><span class="fx-host" id="bootFlask">${symbol(96)}</span></div>`; slBubbles($("#bootFlask")); return; }
   if (!p.name || gateStep === 0) {
     v.innerHTML = `<div class="pnl hero gate gate-c">
       <p class="kicker">Bem-vindo ao</p>
