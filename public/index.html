@@ -631,11 +631,19 @@ html,body{height:100%;overflow:hidden!important}
 
 .sheet-panel{max-height:calc(100% - env(safe-area-inset-top) - 8px)!important}
 #slPull{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 6px);z-index:998;transform:translate(-50%,-80px);display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(20,26,34,.95);border:1px solid rgba(51,191,240,.4);color:#EEF6FA;font:600 13px 'Outfit',system-ui,sans-serif;pointer-events:none;transition:opacity .2s;opacity:0}
+#slUpd{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 96px);z-index:1001;max-width:440px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:14px 14px 14px 16px;border-radius:22px;background:linear-gradient(160deg,rgba(30,40,52,.97),rgba(14,17,22,.97));border:1px solid rgba(51,191,240,.35);box-shadow:0 18px 50px rgba(0,0,0,.6);color:#EEF6FA;font-family:'Outfit',system-ui,sans-serif;animation:slUpdIn .35s cubic-bezier(.2,.9,.2,1)}
+#slUpd b{display:block;font-size:15px}
+#slUpd small{display:block;color:#8FA3B1;font-size:12.5px}
+#slUpd .t{flex:1;min-width:0}
+#slUpd button{border:0;border-radius:999px;padding:10px 14px;font:600 13.5px 'Outfit',system-ui,sans-serif;cursor:pointer}
+#slUpd .go{background:#007BA7;color:#fff}
+#slUpd .no{background:none;color:#8FA3B1;padding:10px 6px}
+@keyframes slUpdIn{from{transform:translateY(20px);opacity:0}}
 #slPull i{width:16px;height:16px;border-radius:50%;border:2px solid #33BFF0;border-top-color:transparent;display:inline-block}
 #slPull.go i{animation:slspin .7s linear infinite}
 @keyframes slspin{to{transform:rotate(360deg)}}
 #slAuth{overscroll-behavior:contain;touch-action:pan-y}
-#slAuth input{width:100%;box-sizing:border-box;font-size:16px!important}
+#slAuth input:not([type=checkbox]){width:100%;box-sizing:border-box;font-size:16px!important}
 img{max-width:100%}
 [hidden]{display:none!important}
 #slAuth{position:fixed;inset:0;z-index:999;overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;
@@ -3054,6 +3062,7 @@ initCaps();
 })();
 
 };</script>
+<script>window.SL_VERSION = "20261103214355";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>

@@ -248,7 +248,29 @@
     }, {passive: true});
   }
 
+  /* Aviso de versão nova: compara a versão carregada com a publicada */
+  let updShown = false;
+  async function checkUpdate() {
+    const mine = window.SL_VERSION; if (!mine || updShown) return;
+    let v; try { const r = await fetch("version.json?t=" + Date.now(), {cache: "no-store"}); if (!r.ok) return; v = (await r.json()).version; } catch { return; }
+    if (!v || v === mine) return;
+    try { if (sessionStorage.getItem("sl_upd_skip") === v) return; } catch {}
+    updShown = true;
+    const el = document.createElement("div"); el.id = "slUpd"; el.setAttribute("role", "dialog");
+    el.innerHTML = `<div class="t"><b>Nova versão do ShapeLab</b><small>Atualize para receber as melhorias.</small></div><button class="no" type="button">Depois</button><button class="go" type="button">Atualizar agora</button>`;
+    document.body.appendChild(el);
+    el.querySelector(".no").onclick = () => { try { sessionStorage.setItem("sl_upd_skip", v); } catch {} el.remove(); updShown = false; };
+    el.querySelector(".go").onclick = async () => {
+      el.querySelector(".go").textContent = "Atualizando…";
+      try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k); } catch {}
+      try { const regs = navigator.serviceWorker ? await navigator.serviceWorker.getRegistrations() : []; await Promise.all(regs.map(r => r.update().catch(() => {}))); } catch {}
+      location.reload();
+    };
+  }
+
   function boot() {
+    setTimeout(checkUpdate, 1500);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkUpdate(); });
     pullToRefresh();
     slBubbles(document.getElementById("bootFlaskA"));
     if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
