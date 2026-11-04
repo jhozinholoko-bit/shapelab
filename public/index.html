@@ -1236,7 +1236,7 @@ function ensureState() {
   if (!EQUIP[p.equip]) p.equip = "academia";
   if (!Array.isArray(p.pains)) p.pains = [];
   S.state.profile = p;
-  S.state.settings = Object.assign({sound: true, vibrate: true, wake: true, collapse: true, rest: "ficha", unit: "kg"}, S.state.settings || {});
+  S.state.settings = Object.assign({sound: true, vibrate: true, wake: true, collapse: true, rest: "ficha", unit: "kg", notify: true, lockscreen: true}, S.state.settings || {});
   if (!Array.isArray(S.state.measures)) S.state.measures = [];
   if (!Array.isArray(S.sessions)) S.sessions = [];
 }
@@ -1482,7 +1482,7 @@ function sndInit() {
   } catch { SND.count = SND.alarm = null; }
 }
 function ensureAudio() {
-  try { if (navigator.audioSession && navigator.audioSession.type !== "transient") navigator.audioSession.type = "transient"; } catch {}
+  try { const want = LOCK.on ? "playback" : "transient"; if (navigator.audioSession && navigator.audioSession.type !== want) navigator.audioSession.type = want; } catch {}
   sndInit();
   if (SND.count && !SND.unlocked) {
     SND.unlocked = true;
@@ -1532,12 +1532,35 @@ function silentLoop() {
   const rate = 8000, n = rate * 10, buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf), w = (o, x) => [...x].forEach((c, i) => dv.setUint8(o + i, c.charCodeAt(0)));
   w(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); w(8, "WAVEfmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
   dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); w(36, "data"); dv.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) dv.setInt16(44 + i * 2, (Math.random() * 2 - 1) * 3, true);
   return URL.createObjectURL(new Blob([buf], {type: "audio/wav"}));
+}
+/* Capa do player da tela de bloqueio: desenha a "sessão ativa" (anel, tempo, séries) */
+let lockCv = null, lockArt = "";
+function lockCover(o) {
+  if (!lockCv) { lockCv = document.createElement("canvas"); lockCv.width = lockCv.height = 512; }
+  const c = lockCv.getContext("2d"), W = 512, cx = 256, cy = 236, R = 170;
+  c.clearRect(0, 0, W, W);
+  const bg = c.createLinearGradient(0, 0, W, W); bg.addColorStop(0, "#0E1A24"); bg.addColorStop(1, "#1A0F18"); c.fillStyle = bg; c.fillRect(0, 0, W, W);
+  c.lineCap = "round";
+  c.lineWidth = 22; c.strokeStyle = "rgba(255,255,255,.09)"; c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.stroke();
+  const pr = o.red ? 1 - o.left / Math.max(1, o.restTotal) : o.total ? o.done / o.total : 0;
+  if (pr > 0) {
+    const g = c.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+    if (o.red) { g.addColorStop(0, "#FF5571"); g.addColorStop(1, "#FF8A96"); } else { g.addColorStop(0, "#2BB8EA"); g.addColorStop(1, "#FF2D95"); }
+    c.strokeStyle = g; c.beginPath(); c.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, pr)); c.stroke();
+  }
+  c.textAlign = "center"; c.textBaseline = "middle";
+  c.fillStyle = o.red ? "#FF8A96" : "#EEF6FA"; c.font = "600 96px ui-monospace, Menlo, monospace"; c.fillText(o.big, cx, cy - 6);
+  c.fillStyle = o.red ? "#FF8A96" : "#8FA3B1"; c.font = "500 28px ui-monospace, Menlo, monospace"; c.fillText(o.small, cx, cy + 70);
+  c.fillStyle = o.red ? "#FF5571" : o.paused ? "#8FA3B1" : "#FF6CB6"; c.font = "600 30px -apple-system, system-ui, sans-serif"; c.fillText(o.label, cx, 462);
+  return new Promise(res => { try { lockCv.toBlob(b => res(b ? URL.createObjectURL(b) : ""), "image/png"); } catch { res(""); } });
 }
 function lockStart() {
   if (LOCK.on || !active || !S.state.settings.lockscreen || !canLock()) return;
   try {
-    if (!LOCK.el) { LOCK.el = new Audio(silentLoop()); LOCK.el.loop = true; LOCK.el.setAttribute("playsinline", ""); }
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+    if (!LOCK.el) { LOCK.el = new Audio(silentLoop()); LOCK.el.loop = true; LOCK.el.volume = 1; LOCK.el.setAttribute("playsinline", ""); }
     const pr = LOCK.el.play();
     LOCK.on = true;
     if (pr && pr.catch) pr.catch(() => { LOCK.on = false; });
@@ -1551,20 +1574,28 @@ function lockStop() {
   try { LOCK.el.pause(); } catch {}
   LOCK.on = false; LOCK.last = "";
   try { navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = "none"; } catch {}
+  try { if (navigator.audioSession) navigator.audioSession.type = "transient"; } catch {}
 }
 function lockUpdate(force) {
   if (!LOCK.on || !active) return;
   const mm = s => `${pad2(Math.floor(s / 60))}:${pad2(s % 60)}`;
   const el = actEl(), left = rest ? Math.max(0, Math.ceil((rest.paused ? rest.leftMs : rest.end - Date.now()) / 1000)) : 0;
-  const title = active.pausedAt ? `Pausado · ${mm(el)}` : rest && !rest.go ? (left <= 3 ? `Prepare-se · ${left}s` : `Descanso · ${mm(left)}`) : `Treino · ${mm(el)}`;
-  const artist = rest && !rest.go ? `${active.routineName} · treino ${mm(el)}` : active.routineName;
+  const total = active.ex.reduce((t, e) => t + (e.skipped ? 0 : e.sets.length), 0), done = active.ex.reduce((t, e) => t + (e.skipped ? 0 : e.sets.filter(x => x.done).length), 0);
+  const resting = rest && !rest.go, red = resting && left <= 3;
+  const title = active.pausedAt ? `Pausado · ${mm(el)}` : resting ? (red ? `Prepare-se · ${left}s` : `Descanso · ${mm(left)}`) : `Treino · ${mm(el)}`;
+  const artist = `${active.routineName} · ${done}/${total} séries`;
   const key = title + "|" + artist;
   if (!force && key === LOCK.last) return;
   LOCK.last = key;
-  try {
-    navigator.mediaSession.metadata = new MediaMetadata({title, artist, album: "ShapeLab", artwork: [{src: "icons/icon-512.png", sizes: "512x512", type: "image/png"}, {src: "icons/icon-192.png", sizes: "192x192", type: "image/png"}]});
-    navigator.mediaSession.playbackState = active.pausedAt ? "paused" : "playing";
-  } catch {}
+  const cover = {big: resting ? mm(left) : mm(el), small: `${done}/${total} SÉRIES`, label: active.pausedAt ? "Sessão pausada" : resting ? (red ? "Prepare-se!" : "Descanso") : "Sessão ativa", red, paused: !!active.pausedAt, left, restTotal: rest ? rest.total : 1, done, total};
+  const apply = art => {
+    try {
+      const artwork = art ? [{src: art, sizes: "512x512", type: "image/png"}] : [{src: "icons/icon-512.png", sizes: "512x512", type: "image/png"}];
+      navigator.mediaSession.metadata = new MediaMetadata({title, artist, album: "ShapeLab", artwork});
+      navigator.mediaSession.playbackState = active && active.pausedAt ? "paused" : "playing";
+    } catch {}
+  };
+  lockCover(cover).then(art => { if (lockArt) setTimeout(((u) => () => URL.revokeObjectURL(u))(lockArt), 3000); lockArt = art; if (LOCK.last === key) apply(art); });
 }
 /* Notificação no celular quando o descanso entra nos últimos segundos */
 const canNotify = () => "Notification" in window;
@@ -1938,7 +1969,7 @@ function openSettings() {
       ${sw("sound", "Som no fim do descanso", "Alarme forte quando o tempo acaba e bipes nos últimos 3 segundos.")}
       <div class="set-row"><span><b>Testar som</b><small>Toca o som do fim do descanso. Usa o volume de mídia do celular.</small></span><button class="b sm" data-a="testSound">▶ Tocar</button></div>
       ${sw("vibrate", "Vibração", "O celular vibra quando o descanso acaba.")}
-      ${canLock() ? sw("lockscreen", "Mostrar na tela de bloqueio", "O tempo do treino e do descanso aparece no player da tela de bloqueio e o alarme toca mesmo com a tela apagada. Atenção: pausa a música de outros apps.") : ""}
+      ${canLock() ? sw("lockscreen", "Treino na tela de bloqueio", "Mostra a sessão ativa (tempo, descanso e séries) no player da tela de bloqueio e mantém alarme e notificação funcionando com a tela apagada. Pausa a música de outros apps.") : ""}
       ${canNotify() ? sw("notify", "Notificação no fim do descanso", "Avisa no celular quando faltarem 3 segundos (contagem no vermelho).") : ""}
       ${sw("wake", "Tela sempre acesa", "Evita que o celular apague durante o treino.")}
       ${sw("collapse", "Recolher exercício concluído", "Ao marcar a última série, o card fecha e vai para o próximo.")}
@@ -2867,7 +2898,7 @@ const actions = {
   new: () => openEditor(null),
   edit: b => openEditor(b.dataset.id),
   dupe: b => { const r = S.state.routines.find(x => x.id === b.dataset.id); if (!r) return; const c = clone(r); c.id = uid(); c.name = r.name + " (cópia)"; c.exercises.forEach(e => e.id = uid()); S.state.routines.push(c); saveState(); toast("Ficha duplicada"); renderCurrent(); },
-  start: b => { ensureAudio(); startWorkout(b.dataset.id); },
+  start: b => { ensureAudio(); if (S.state.settings.notify && canNotify() && Notification.permission === "default") { try { Notification.requestPermission(); } catch {} } startWorkout(b.dataset.id); lockStart(); },
   browse: () => openPicker("browse"),
   pdfAll: () => exportPdf(null),
   pdfOne: b => exportPdf([b.dataset.id]),
@@ -3062,7 +3093,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261103214355";</script>
+<script>window.SL_VERSION = "20261103215252";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
