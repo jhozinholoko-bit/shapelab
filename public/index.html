@@ -1236,7 +1236,7 @@ function ensureState() {
   if (!EQUIP[p.equip]) p.equip = "academia";
   if (!Array.isArray(p.pains)) p.pains = [];
   S.state.profile = p;
-  S.state.settings = Object.assign({sound: true, vibrate: true, wake: true, collapse: true, rest: "ficha", unit: "kg", notify: true, lockscreen: true}, S.state.settings || {});
+  S.state.settings = Object.assign({sound: true, vibrate: true, wake: true, collapse: true, rest: "ficha", unit: "kg", notify: true}, S.state.settings || {}); delete S.state.settings.lockscreen;
   if (!Array.isArray(S.state.measures)) S.state.measures = [];
   if (!Array.isArray(S.sessions)) S.sessions = [];
 }
@@ -1482,7 +1482,7 @@ function sndInit() {
   } catch { SND.count = SND.alarm = null; }
 }
 function ensureAudio() {
-  try { const want = LOCK.on ? "playback" : "transient"; if (navigator.audioSession && navigator.audioSession.type !== want) navigator.audioSession.type = want; } catch {}
+  try { if (navigator.audioSession && navigator.audioSession.type !== "transient") navigator.audioSession.type = "transient"; } catch {}
   sndInit();
   if (SND.count && !SND.unlocked) {
     SND.unlocked = true;
@@ -1493,7 +1493,7 @@ function ensureAudio() {
     if (actx && actx.state !== "running") actx.resume().catch(() => {});
   } catch {}
 }
-["pointerdown", "touchend", "keydown", "click"].forEach(ev => document.addEventListener(ev, () => { if (!SND.unlocked || (actx && actx.state !== "running")) ensureAudio(); if (active && !LOCK.on && S.state.settings.lockscreen) lockStart(); }, {capture: true, passive: true}));
+["pointerdown", "touchend", "keydown", "click"].forEach(ev => document.addEventListener(ev, () => { if (!SND.unlocked || (actx && actx.state !== "running")) ensureAudio(); }, {capture: true, passive: true}));
 let actOut = null;
 function audioOut() {
   if (!actx) return null;
@@ -1513,7 +1513,7 @@ function webTones(fn) {
 function playSnd(a, fallback) {
   sndInit();
   if (!a) return webTones(fallback);
-  try { a.muted = false; a.volume = 1; a.currentTime = 0; a.onended = () => { if (LOCK.on && LOCK.el && LOCK.el.paused) LOCK.el.play().catch(() => {}); }; const pr = a.play(); if (pr && pr.catch) pr.catch(() => webTones(fallback)); } catch { webTones(fallback); }
+  try { a.muted = false; a.volume = 1; a.currentTime = 0; const pr = a.play(); if (pr && pr.catch) pr.catch(() => webTones(fallback)); } catch { webTones(fallback); }
 }
 function countBeep() {
   if (!soundOn()) return;
@@ -1523,85 +1523,18 @@ function beep() {
   if (!soundOn()) return;
   playSnd(SND.alarm, () => { const t = actx.currentTime + 0.02; tone(t, 784, .9, .3); tone(t + .18, 1175, 1.1, .26); tone(t + 1.25, 784, .9, .22); tone(t + 1.43, 1175, 1.2, .2); });
 }
-/* Tela de bloqueio: com o modo ligado, um áudio mudo fica tocando durante o treino e o
-   player do celular (tela de bloqueio / central de controle) mostra o tempo do treino e do descanso.
-   Efeito colateral: o celular trata como áudio tocando, então pausa a música de outros apps. */
-const LOCK = {el: null, on: false, last: ""};
-const canLock = () => "mediaSession" in navigator;
-function silentLoop() {
-  const rate = 8000, n = rate * 10, buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf), w = (o, x) => [...x].forEach((c, i) => dv.setUint8(o + i, c.charCodeAt(0)));
-  w(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); w(8, "WAVEfmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
-  dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); w(36, "data"); dv.setUint32(40, n * 2, true);
-  for (let i = 0; i < n; i++) dv.setInt16(44 + i * 2, (Math.random() * 2 - 1) * 3, true);
-  return URL.createObjectURL(new Blob([buf], {type: "audio/wav"}));
-}
-/* Capa do player da tela de bloqueio: desenha a "sessão ativa" (anel, tempo, séries) */
-let lockCv = null, lockArt = "";
-function lockCover(o) {
-  if (!lockCv) { lockCv = document.createElement("canvas"); lockCv.width = lockCv.height = 512; }
-  const c = lockCv.getContext("2d"), W = 512, cx = 256, cy = 236, R = 170;
-  c.clearRect(0, 0, W, W);
-  const bg = c.createLinearGradient(0, 0, W, W); bg.addColorStop(0, "#0E1A24"); bg.addColorStop(1, "#1A0F18"); c.fillStyle = bg; c.fillRect(0, 0, W, W);
-  c.lineCap = "round";
-  c.lineWidth = 22; c.strokeStyle = "rgba(255,255,255,.09)"; c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.stroke();
-  const pr = o.red ? 1 - o.left / Math.max(1, o.restTotal) : o.total ? o.done / o.total : 0;
-  if (pr > 0) {
-    const g = c.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
-    if (o.red) { g.addColorStop(0, "#FF5571"); g.addColorStop(1, "#FF8A96"); } else { g.addColorStop(0, "#2BB8EA"); g.addColorStop(1, "#FF2D95"); }
-    c.strokeStyle = g; c.beginPath(); c.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, pr)); c.stroke();
-  }
-  c.textAlign = "center"; c.textBaseline = "middle";
-  c.fillStyle = o.red ? "#FF8A96" : "#EEF6FA"; c.font = "600 96px ui-monospace, Menlo, monospace"; c.fillText(o.big, cx, cy - 6);
-  c.fillStyle = o.red ? "#FF8A96" : "#8FA3B1"; c.font = "500 28px ui-monospace, Menlo, monospace"; c.fillText(o.small, cx, cy + 70);
-  c.fillStyle = o.red ? "#FF5571" : o.paused ? "#8FA3B1" : "#FF6CB6"; c.font = "600 30px -apple-system, system-ui, sans-serif"; c.fillText(o.label, cx, 462);
-  return new Promise(res => { try { lockCv.toBlob(b => res(b ? URL.createObjectURL(b) : ""), "image/png"); } catch { res(""); } });
-}
-function lockStart() {
-  if (LOCK.on || !active || !S.state.settings.lockscreen || !canLock()) return;
-  try {
-    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
-    if (!LOCK.el) { LOCK.el = new Audio(silentLoop()); LOCK.el.loop = true; LOCK.el.volume = 1; LOCK.el.setAttribute("playsinline", ""); }
-    const pr = LOCK.el.play();
-    LOCK.on = true;
-    if (pr && pr.catch) pr.catch(() => { LOCK.on = false; });
-    const ms = navigator.mediaSession;
-    try { ms.setActionHandler("pause", () => { pauseWorkout(); }); ms.setActionHandler("play", () => { resumeWorkout(); }); ms.setActionHandler("stop", () => {}); } catch {}
-    lockUpdate(true);
-  } catch { LOCK.on = false; }
-}
-function lockStop() {
-  if (!LOCK.el) { LOCK.on = false; return; }
-  try { LOCK.el.pause(); } catch {}
-  LOCK.on = false; LOCK.last = "";
-  try { navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = "none"; } catch {}
-  try { if (navigator.audioSession) navigator.audioSession.type = "transient"; } catch {}
-}
-function lockUpdate(force) {
-  if (!LOCK.on || !active) return;
-  const mm = s => `${pad2(Math.floor(s / 60))}:${pad2(s % 60)}`;
-  const el = actEl(), left = rest ? Math.max(0, Math.ceil((rest.paused ? rest.leftMs : rest.end - Date.now()) / 1000)) : 0;
-  const total = active.ex.reduce((t, e) => t + (e.skipped ? 0 : e.sets.length), 0), done = active.ex.reduce((t, e) => t + (e.skipped ? 0 : e.sets.filter(x => x.done).length), 0);
-  const resting = rest && !rest.go, red = resting && left <= 3;
-  const title = active.pausedAt ? `Pausado · ${mm(el)}` : resting ? (red ? `Prepare-se · ${left}s` : `Descanso · ${mm(left)}`) : `Treino · ${mm(el)}`;
-  const artist = `${active.routineName} · ${done}/${total} séries`;
-  const key = title + "|" + artist;
-  if (!force && key === LOCK.last) return;
-  LOCK.last = key;
-  const cover = {big: resting ? mm(left) : mm(el), small: `${done}/${total} SÉRIES`, label: active.pausedAt ? "Sessão pausada" : resting ? (red ? "Prepare-se!" : "Descanso") : "Sessão ativa", red, paused: !!active.pausedAt, left, restTotal: rest ? rest.total : 1, done, total};
-  const apply = art => {
-    try {
-      const artwork = art ? [{src: art, sizes: "512x512", type: "image/png"}] : [{src: "icons/icon-512.png", sizes: "512x512", type: "image/png"}];
-      navigator.mediaSession.metadata = new MediaMetadata({title, artist, album: "ShapeLab", artwork});
-      navigator.mediaSession.playbackState = active && active.pausedAt ? "paused" : "playing";
-    } catch {}
-  };
-  lockCover(cover).then(art => { if (lockArt) setTimeout(((u) => () => URL.revokeObjectURL(u))(lockArt), 3000); lockArt = art; if (LOCK.last === key) apply(art); });
-}
 /* Notificação no celular quando o descanso entra nos últimos segundos */
 const canNotify = () => "Notification" in window;
-function restNotify(left) {
+const REST_SOON = ["Levanta daí, o shape não vai se montar sozinho.", "3, 2, 1… o descanso tá acabando, campeão.", "Respira fundo: a próxima série já tá te chamando.",
+  "O banco tá ficando confortável demais. Bora!", "Hidratou? Então larga a garrafinha que a série não espera.", "Últimos segundos de paz. Aproveita."];
+const REST_DONE = ["Acabou o recreio! Volta pra série.", "Descanso encerrado. O peso tá com saudade de você.", "Fim do intervalo. O experimento continua no laboratório.",
+  "Se o celular tá na sua mão, o halter não tá. Bora!", "Tempo esgotado. Os músculos pediram mais uma dose.", "Chega de rolar o feed, a série te espera.",
+  "O descanso acabou, mas a desculpa você ainda pode guardar pra amanhã.", "Bora que o shape não vem por delivery."];
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function restNotify(kind) {
   if (!S.state.settings.notify || !canNotify() || Notification.permission !== "granted") return;
-  const title = "ShapeLab · Prepare-se", opt = {body: `Faltam ${left}s de descanso. Próxima série!`, tag: "sl-rest", renotify: true, silent: true, icon: "icons/icon-192.png", badge: "icons/icon-192.png"};
+  const done = kind === "done";
+  const title = done ? "⏱ Descanso acabou" : "⏳ Prepare-se", opt = {body: pick(done ? REST_DONE : REST_SOON), tag: "sl-rest", renotify: true, silent: true, icon: "icons/icon-192.png", badge: "icons/icon-192.png"};
   try {
     if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.ready.then(r => r.showNotification(title, opt)).catch(() => { try { new Notification(title, opt); } catch {} });
     else new Notification(title, opt);
@@ -1658,7 +1591,6 @@ function resumeWorkout() {
 function startRest(sec) { rest = {end: Date.now() + sec * 1000, total: sec, go: false}; saveRest(); tick(); }
 function tick() {
   const now = new Date();
-  if (active) lockUpdate(); else if (LOCK.on) lockStop();
   if (active) {
     const t = actEl();
     $("#sysClock").textContent = t >= 3600 ? `${Math.floor(t / 3600)}:${pad2(Math.floor(t / 60) % 60)}:${pad2(t % 60)}` : `${pad2(Math.floor(t / 60))}:${pad2(t % 60)}`;
@@ -1674,12 +1606,12 @@ function tick() {
   bar.hidden = false;
   const left = Math.ceil((rest.paused ? rest.leftMs : rest.end - Date.now()) / 1000);
   if (left <= 0) {
-    if (!rest.go) { rest.go = true; rest.goAt = Date.now(); saveRest(); if (Date.now() - rest.end < 5000) beep(); try { if (S.state.settings.vibrate) navigator.vibrate && navigator.vibrate([450, 120, 450, 120, 700]); } catch {} }
+    if (!rest.go) { rest.go = true; rest.goAt = Date.now(); saveRest(); if (Date.now() - rest.end < 5000) { beep(); restNotify("done"); } try { if (S.state.settings.vibrate) navigator.vibrate && navigator.vibrate([450, 120, 450, 120, 700]); } catch {} }
     bar.classList.add("go"); bar.classList.remove("cd"); $("#rbLabel").textContent = "DESCANSO ACABOU"; $("#rbTime").textContent = "Próxima série"; $("#restbar").querySelector('[data-a="restSkip"]').textContent = "OK"; $("#rrPg").style.strokeDashoffset = 0;
     if (Date.now() - rest.goAt > 4500) { rest = null; saveRest(); bar.hidden = true; bar.classList.remove("go"); }
     return;
   }
-  if (!rest.paused && left <= 3 && left >= 1 && rest.lastTick !== left) { if (!rest.notified) { rest.notified = true; saveRest(); restNotify(left); } rest.lastTick = left; countBeep(); try { if (S.state.settings.vibrate) navigator.vibrate && navigator.vibrate(60); } catch {} }
+  if (!rest.paused && left <= 3 && left >= 1 && rest.lastTick !== left) { if (!rest.notified) { rest.notified = true; saveRest(); restNotify("soon"); } rest.lastTick = left; countBeep(); try { if (S.state.settings.vibrate) navigator.vibrate && navigator.vibrate(60); } catch {} }
   bar.classList.remove("go"); bar.classList.toggle("cd", left <= 3); $("#rbLabel").textContent = rest.paused ? "PAUSADO" : left <= 3 ? "PREPARE-SE" : "DESCANSO"; bar.querySelector('[data-a="restSkip"]').textContent = "PULAR";
   $("#rbTime").textContent = `${pad2(Math.floor(left / 60))}:${pad2(left % 60)}`;
   $("#rrPg").style.strokeDashoffset = (RC * (1 - clamp(left / rest.total, 0, 1))).toFixed(2);
@@ -1969,8 +1901,7 @@ function openSettings() {
       ${sw("sound", "Som no fim do descanso", "Alarme forte quando o tempo acaba e bipes nos últimos 3 segundos.")}
       <div class="set-row"><span><b>Testar som</b><small>Toca o som do fim do descanso. Usa o volume de mídia do celular.</small></span><button class="b sm" data-a="testSound">▶ Tocar</button></div>
       ${sw("vibrate", "Vibração", "O celular vibra quando o descanso acaba.")}
-      ${canLock() ? sw("lockscreen", "Treino na tela de bloqueio", "Mostra a sessão ativa (tempo, descanso e séries) no player da tela de bloqueio e mantém alarme e notificação funcionando com a tela apagada. Pausa a música de outros apps.") : ""}
-      ${canNotify() ? sw("notify", "Notificação no fim do descanso", "Avisa no celular quando faltarem 3 segundos (contagem no vermelho).") : ""}
+      ${canNotify() ? sw("notify", "Notificação no fim do descanso", "Avisa no celular quando o descanso fica no vermelho e quando acaba.") : ""}
       ${sw("wake", "Tela sempre acesa", "Evita que o celular apague durante o treino.")}
       ${sw("collapse", "Recolher exercício concluído", "Ao marcar a última série, o card fecha e vai para o próximo.")}
       <div class="set-row"><span><b>Descanso entre séries</b><small>Use o tempo de cada exercício ou um valor fixo.</small></span>
@@ -2898,7 +2829,7 @@ const actions = {
   new: () => openEditor(null),
   edit: b => openEditor(b.dataset.id),
   dupe: b => { const r = S.state.routines.find(x => x.id === b.dataset.id); if (!r) return; const c = clone(r); c.id = uid(); c.name = r.name + " (cópia)"; c.exercises.forEach(e => e.id = uid()); S.state.routines.push(c); saveState(); toast("Ficha duplicada"); renderCurrent(); },
-  start: b => { ensureAudio(); if (S.state.settings.notify && canNotify() && Notification.permission === "default") { try { Notification.requestPermission(); } catch {} } startWorkout(b.dataset.id); lockStart(); },
+  start: b => { ensureAudio(); if (S.state.settings.notify && canNotify() && Notification.permission === "default") { try { Notification.requestPermission(); } catch {} } startWorkout(b.dataset.id); },
   browse: () => openPicker("browse"),
   pdfAll: () => exportPdf(null),
   pdfOne: b => exportPdf([b.dataset.id]),
@@ -2995,7 +2926,7 @@ const actions = {
   setToggle: async b => { const k = b.dataset.k;
     if (k === "notify" && !S.state.settings.notify && !(await askNotify())) return;
     S.state.settings[k] = !S.state.settings[k];
-    if (k === "lockscreen") { if (S.state.settings.lockscreen) lockStart(); else lockStop(); } saveState(); b.setAttribute("aria-pressed", String(S.state.settings[k])); if (k === "wake") { if (S.state.settings.wake) keepAwake(); else releaseAwake(); } },
+    saveState(); b.setAttribute("aria-pressed", String(S.state.settings[k])); if (k === "wake") { if (S.state.settings.wake) keepAwake(); else releaseAwake(); } },
   setUnit: b => { S.state.settings.unit = b.dataset.u; saveState(); openSettings(); renderCurrent(); },
   mMetric: b => { mMetric = b.dataset.k; openMeasures(); },
   mSave: () => {
@@ -3093,7 +3024,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261103215252";</script>
+<script>window.SL_VERSION = "20261103215818";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
