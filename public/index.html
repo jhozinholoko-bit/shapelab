@@ -1551,8 +1551,6 @@ function pushSync() {
   pushT = setTimeout(() => {
     const jobs = [];
     if (S.state.settings.notify && rest && !rest.go && !rest.paused && active) {
-      const soon = rest.end - 3000;
-      if (soon > Date.now() + 2000) jobs.push({at: soon, title: "⏳ Prepare-se", body: pick(REST_SOON)});
       jobs.push({at: rest.end, title: "⏱ Descanso acabou", body: pick(REST_DONE)});
     }
     P.schedule(jobs);
@@ -1596,7 +1594,7 @@ function tick() {
     if (Date.now() - rest.goAt > 4500) { rest = null; saveRest(); bar.hidden = true; bar.classList.remove("go"); }
     return;
   }
-  if (!rest.paused && left <= 3 && left >= 1 && rest.lastTick !== left) { if (!rest.notified) { rest.notified = true; saveRest(); restNotify("soon"); } rest.lastTick = left; countBeep(); try { if (S.state.settings.vibrate) navigator.vibrate && navigator.vibrate(60); } catch {} }
+  if (!rest.paused && left <= 3 && left >= 1 && rest.lastTick !== left) { rest.lastTick = left; countBeep(); try { if (S.state.settings.vibrate) navigator.vibrate && navigator.vibrate(60); } catch {} }
   bar.classList.remove("go"); bar.classList.toggle("cd", left <= 3); $("#rbLabel").textContent = rest.paused ? "PAUSADO" : left <= 3 ? "PREPARE-SE" : "DESCANSO"; bar.querySelector('[data-a="restSkip"]').textContent = "PULAR";
   $("#rbTime").textContent = `${pad2(Math.floor(left / 60))}:${pad2(left % 60)}`;
   $("#rrPg").style.strokeDashoffset = (RC * (1 - clamp(left / rest.total, 0, 1))).toFixed(2);
@@ -1886,7 +1884,7 @@ function openSettings() {
       ${sw("sound", "Som no fim do descanso", "Alarme forte quando o tempo acaba e bipes nos últimos 3 segundos.")}
       <div class="set-row"><span><b>Testar som</b><small>Toca o som do fim do descanso. Usa o volume de mídia do celular.</small></span><button class="b sm" data-a="testSound">▶ Tocar</button></div>
       ${sw("vibrate", "Vibração", "O celular vibra quando o descanso acaba.")}
-      ${canNotify() ? sw("notify", "Notificação no fim do descanso", "Avisa no celular quando o descanso fica no vermelho e quando acaba.") : ""}
+      ${canNotify() ? sw("notify", "Notificação no fim do descanso", "Avisa no celular quando o descanso acaba.") : ""}
       ${sw("wake", "Tela sempre acesa", "Evita que o celular apague durante o treino.")}
       ${sw("collapse", "Recolher exercício concluído", "Ao marcar a última série, o card fecha e vai para o próximo.")}
       <div class="set-row"><span><b>Descanso entre séries</b><small>Use o tempo de cada exercício ou um valor fixo.</small></span>
@@ -3018,7 +3016,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261105185413";</script>
+<script>window.SL_VERSION = "20261105185554";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
