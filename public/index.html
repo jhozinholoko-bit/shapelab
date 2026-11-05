@@ -1571,6 +1571,11 @@ function resumeWorkout() {
   if (rest && rest.paused) { rest.end = Date.now() + rest.leftMs; delete rest.paused; delete rest.leftMs; saveRest(); }
   saveActive(); keepAwake(); renderTreino(); tick();
 }
+/* Sugestão de cada campo: o valor da série de cima mais próxima que já tem número */
+function setHint(e, k, f) {
+  for (let j = k - 1; j >= 0; j--) { const v = String(e.sets[j][f] ?? "").trim(); if (v !== "") return v; }
+  return f === "load" ? "kg" : String(repsTarget(e.reps));
+}
 function startRest(sec) { rest = {end: Date.now() + sec * 1000, total: sec, go: false}; saveRest(); tick(); }
 function tick() {
   const now = new Date();
@@ -2583,8 +2588,8 @@ function renderTreino() {
     const dn = e.sets.filter(s => s.done).length, L = byName(e.name);
     const last = historyFor(e.name, 1)[0], best = bestFor(e.name);
     const rows = e.sets.map((s, k) => `<div class="srow ${s.done ? "done" : ""}"><span class="sl">S${k + 1}</span>
-      <input id="s-${i}-${k}-l" inputmode="decimal" aria-label="Carga da série ${k + 1}" data-f="sload" data-i="${i}" data-k="${k}" value="${s.load}" placeholder="kg">
-      <input id="s-${i}-${k}-r" inputmode="numeric" aria-label="Repetições da série ${k + 1}" data-f="sreps" data-i="${i}" data-k="${k}" value="${s.reps}" placeholder="${esc(repsTarget(e.reps))}">
+      <input id="s-${i}-${k}-l" inputmode="decimal" aria-label="Carga da série ${k + 1}" data-f="sload" data-i="${i}" data-k="${k}" value="${s.load}" placeholder="${esc(setHint(e, k, "load"))}">
+      <input id="s-${i}-${k}-r" inputmode="numeric" aria-label="Repetições da série ${k + 1}" data-f="sreps" data-i="${i}" data-k="${k}" value="${s.reps}" placeholder="${esc(setHint(e, k, "reps"))}">
       <button class="chk" data-a="toggleSet" data-i="${i}" data-k="${k}" aria-pressed="${s.done}" aria-label="Concluir série ${k + 1}">✓</button></div>`).join("");
     const done = dn === e.sets.length;
     if (e.skipped) {
@@ -2855,7 +2860,9 @@ const actions = {
     ensureAudio(); keepAwake();
     const e = active.ex[+b.dataset.i], s = e.sets[+b.dataset.k];
     s.done = !s.done;
-    if (s.done) { if (!String(s.reps).trim()) s.reps = repsTarget(e.reps); startRest(S.state.settings.rest === "ficha" ? e.rest : +S.state.settings.rest); }
+    if (s.done) { const k = +b.dataset.k, hl = setHint(e, k, "load");
+      if (!String(s.load ?? "").trim() && hl !== "kg") s.load = hl;
+      if (!String(s.reps ?? "").trim()) s.reps = setHint(e, k, "reps"); startRest(S.state.settings.rest === "ficha" ? e.rest : +S.state.settings.rest); }
     const nowDone = e.sets.every(x => x.done);
     if (nowDone && s.done) e.open = !S.state.settings.collapse;
     saveActive(); discardArm = false; renderTreino();
@@ -2982,14 +2989,10 @@ function onField(ev) {
     case "enote": draft.exercises[i].note = t.value; break;
     case "pq": if (ev.type === "input") { pk.q = t.value; renderPickList(); } break;
     case "sload": case "sreps": {
-      /* Preenche as séries de baixo com o mesmo valor: só as não concluídas e que você ainda não digitou à mão */
-      const f = t.dataset.f === "sload" ? "load" : "reps", man = f === "load" ? "manL" : "manR", sets = active.ex[i].sets;
-      sets[k][f] = t.value; sets[k][man] = true;
-      for (let j = k + 1; j < sets.length; j++) {
-        const x = sets[j]; if (x.done || x[man]) continue;
-        x[f] = t.value;
-        const inp = document.getElementById(`s-${i}-${j}-${f === "load" ? "l" : "r"}`); if (inp && inp !== document.activeElement) inp.value = t.value;
-      }
+      /* Não preenche nada: só atualiza a sugestão (texto apagado) das séries de baixo que estão vazias */
+      const f = t.dataset.f === "sload" ? "load" : "reps", sets = active.ex[i].sets;
+      sets[k][f] = t.value;
+      for (let j = k + 1; j < sets.length; j++) { const inp = document.getElementById(`s-${i}-${j}-${f === "load" ? "l" : "r"}`); if (inp) inp.placeholder = setHint(active.ex[i], j, f); }
       saveActive(); break;
     }
     case "evo": if (ev.type === "change") { evoEx = t.value; $("#evoChart").innerHTML = evoChart(evoEx); } break;
@@ -3016,7 +3019,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261105185554";</script>
+<script>window.SL_VERSION = "20261105185800";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
