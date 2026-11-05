@@ -621,6 +621,7 @@ body.booting .hud-top,body.booting .dock{display:none}
 }
 /* iPhone dá zoom sozinho em campos com letra menor que 16px; isso deslocava a tela ao abrir o teclado */
 input,select,textarea{font-size:16px!important}
+body.typing .dock,body.typing .rest{display:none}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 <style>
@@ -1514,6 +1515,9 @@ async function askNotify() {
 }
 async function keepAwake() { try { if (active && S.state.settings.wake && navigator.wakeLock && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => wakeLock = null); } } catch {} }
 function releaseAwake() { try { wakeLock && wakeLock.release(); } catch {} wakeLock = null; }
+/* Teclado aberto: esconde o menu de baixo para não cobrir os campos */
+document.addEventListener("focusin", e => { if (e.target.matches && e.target.matches("input:not([type=checkbox]):not([type=file]), textarea")) document.body.classList.add("typing"); });
+document.addEventListener("focusout", () => setTimeout(() => { const a = document.activeElement; if (!(a && a.matches && a.matches("input:not([type=checkbox]):not([type=file]), textarea"))) document.body.classList.remove("typing"); }, 50));
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { if (actx && actx.state !== "running") actx.resume().catch(() => {}); keepAwake(); tick(); } });
 window.addEventListener("focus", () => tick());
 window.addEventListener("pageshow", () => tick());
@@ -2979,8 +2983,17 @@ function onField(ev) {
     case "erest": draft.exercises[i].rest = parseInt(t.value) || 60; break;
     case "enote": draft.exercises[i].note = t.value; break;
     case "pq": if (ev.type === "input") { pk.q = t.value; renderPickList(); } break;
-    case "sload": active.ex[i].sets[k].load = t.value; saveActive(); break;
-    case "sreps": active.ex[i].sets[k].reps = t.value; saveActive(); break;
+    case "sload": case "sreps": {
+      /* Preenche as séries de baixo com o mesmo valor: só as não concluídas e que você ainda não digitou à mão */
+      const f = t.dataset.f === "sload" ? "load" : "reps", man = f === "load" ? "manL" : "manR", sets = active.ex[i].sets;
+      sets[k][f] = t.value; sets[k][man] = true;
+      for (let j = k + 1; j < sets.length; j++) {
+        const x = sets[j]; if (x.done || x[man]) continue;
+        x[f] = t.value;
+        const inp = document.getElementById(`s-${i}-${j}-${f === "load" ? "l" : "r"}`); if (inp && inp !== document.activeElement) inp.value = t.value;
+      }
+      saveActive(); break;
+    }
     case "evo": if (ev.type === "change") { evoEx = t.value; $("#evoChart").innerHTML = evoChart(evoEx); } break;
     case "impText": if (imp) imp.text = t.value; break;
     case "impName": if (imp && imp.routines) imp.routines[+t.dataset.r].name = t.value.slice(0, 60); break;
@@ -3005,7 +3018,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261105184650";</script>
+<script>window.SL_VERSION = "20261105185413";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
