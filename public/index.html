@@ -1452,76 +1452,41 @@ async function deleteMedia() {
 /* ============ som, vibração, tela ativa ============ */
 let actx = null, wakeLock = null;
 const soundOn = () => S.state.settings.sound !== false;
-/* Som no celular: o alarme é tocado como mídia (elemento <audio> com um WAV gerado aqui).
-   Assim ele toca mesmo com o iPhone no silencioso e, onde o navegador permite, só abaixa a música de outros apps por um instante.
-   O primeiro toque na tela destrava os sons; se falhar, cai para o WebAudio. */
-function mkWav(parts, rate = 22050) {
-  const total = Math.ceil(parts.reduce((t, p) => Math.max(t, p.t + p.d), 0) * rate) + 200;
-  const pcm = new Float32Array(total);
-  parts.forEach(({t, d, f, v}) => {
-    const s0 = Math.floor(t * rate), n = Math.floor(d * rate), att = Math.floor(.006 * rate), rel = Math.floor(.03 * rate);
-    for (let i = 0; i < n; i++) {
-      const x = i / rate, env = Math.min(1, i / att, (n - i) / rel) * Math.exp(-x * 5 / d);
-      pcm[s0 + i] += (Math.sin(2 * Math.PI * f * x) + .25 * Math.sin(4 * Math.PI * f * x) + .08 * Math.sin(6 * Math.PI * f * x)) / 1.33 * v * env;
-    }
-  });
-  const buf = new ArrayBuffer(44 + total * 2), dv = new DataView(buf), w = (o, x) => [...x].forEach((c, i) => dv.setUint8(o + i, c.charCodeAt(0)));
-  w(0, "RIFF"); dv.setUint32(4, 36 + total * 2, true); w(8, "WAVEfmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
-  dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); w(36, "data"); dv.setUint32(40, total * 2, true);
-  for (let i = 0; i < total; i++) dv.setInt16(44 + i * 2, Math.max(-1, Math.min(1, pcm[i])) * 32000, true);
-  return URL.createObjectURL(new Blob([buf], {type: "audio/wav"}));
-}
-const SND = {count: null, alarm: null, unlocked: false};
-function sndInit() {
-  if (SND.count) return;
-  try {
-    /* sons suaves: um "tic" curto na contagem e um sino de duas notas no fim */
-    const al = [{t: 0, d: .9, f: 784, v: .3}, {t: .18, d: 1.1, f: 1175, v: .26}, {t: 1.25, d: .9, f: 784, v: .22}, {t: 1.43, d: 1.2, f: 1175, v: .2}];
-    SND.count = new Audio(mkWav([{t: 0, d: .16, f: 880, v: .14}])); SND.alarm = new Audio(mkWav(al));
-    [SND.count, SND.alarm].forEach(a => { a.preload = "auto"; a.setAttribute("playsinline", ""); });
-  } catch { SND.count = SND.alarm = null; }
-}
+/* Sons só pelo WebAudio, em modo "ambient": mistura com a música de outros apps (Spotify etc.) em vez de pausá-la.
+   Nenhum <audio> é tocado, porque no iPhone isso toma o controle do som e para a música. */
 function ensureAudio() {
-  try { if (navigator.audioSession && navigator.audioSession.type !== "transient") navigator.audioSession.type = "transient"; } catch {}
-  sndInit();
-  if (SND.count && !SND.unlocked) {
-    SND.unlocked = true;
-    [SND.count, SND.alarm].forEach(a => { try { a.muted = true; const pr = a.play(); const done = () => { a.pause(); a.currentTime = 0; a.muted = false; }; if (pr && pr.then) pr.then(done, () => { a.muted = false; SND.unlocked = false; }); else done(); } catch { a.muted = false; } });
-  }
+  try { if (navigator.audioSession && navigator.audioSession.type !== "ambient") navigator.audioSession.type = "ambient"; } catch {}
   try {
     if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) actx = new AC(); }
     if (actx && actx.state !== "running") actx.resume().catch(() => {});
   } catch {}
 }
-["pointerdown", "touchend", "keydown", "click"].forEach(ev => document.addEventListener(ev, () => { if (!SND.unlocked || (actx && actx.state !== "running")) ensureAudio(); }, {capture: true, passive: true}));
+["pointerdown", "touchend", "keydown", "click"].forEach(ev => document.addEventListener(ev, () => { if (!actx || actx.state !== "running") ensureAudio(); }, {capture: true, passive: true}));
 let actOut = null;
 function audioOut() {
   if (!actx) return null;
   if (!actOut) actOut = actx.destination;
   return actOut;
 }
-function tone(t0, f, d, vol, type) {
-  const o = actx.createOscillator(), g = actx.createGain();
-  o.type = type || "sine"; o.frequency.setValueAtTime(f, t0);
-  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.006);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
-  o.connect(g); g.connect(audioOut()); o.start(t0); o.stop(t0 + d + 0.02);
+function tone(t0, f, d, vol) {
+  [[1, 1], [2, .25], [3, .08]].forEach(([h, a]) => {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(f * h, t0);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol * a, t0 + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d / h);
+    o.connect(g); g.connect(audioOut()); o.start(t0); o.stop(t0 + d + 0.05);
+  });
 }
 function webTones(fn) {
   try { if (!actx) ensureAudio(); if (!actx) return; if (actx.state === "running") fn(); else actx.resume().then(fn).catch(() => {}); } catch {}
 }
-function playSnd(a, fallback) {
-  sndInit();
-  if (!a) return webTones(fallback);
-  try { a.muted = false; a.volume = 1; a.currentTime = 0; const pr = a.play(); if (pr && pr.catch) pr.catch(() => webTones(fallback)); } catch { webTones(fallback); }
-}
 function countBeep() {
   if (!soundOn()) return;
-  playSnd(SND.count, () => tone(actx.currentTime + 0.01, 880, 0.16, 0.14));
+  webTones(() => tone(actx.currentTime + 0.01, 880, 0.16, 0.14));
 }
 function beep() {
   if (!soundOn()) return;
-  playSnd(SND.alarm, () => { const t = actx.currentTime + 0.02; tone(t, 784, .9, .3); tone(t + .18, 1175, 1.1, .26); tone(t + 1.25, 784, .9, .22); tone(t + 1.43, 1175, 1.2, .2); });
+  webTones(() => { const t = actx.currentTime + 0.02; tone(t, 784, .9, .3); tone(t + .18, 1175, 1.1, .26); tone(t + 1.25, 784, .9, .22); tone(t + 1.43, 1175, 1.2, .2); });
 }
 /* Notificação no celular quando o descanso entra nos últimos segundos */
 const canNotify = () => "Notification" in window;
@@ -3024,7 +2989,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261103215818";</script>
+<script>window.SL_VERSION = "20261105184240";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
