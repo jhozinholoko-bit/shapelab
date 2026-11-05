@@ -622,6 +622,11 @@ body.booting .hud-top,body.booting .dock{display:none}
 /* iPhone dá zoom sozinho em campos com letra menor que 16px; isso deslocava a tela ao abrir o teclado */
 input,select,textarea{font-size:16px!important}
 body.typing .dock,body.typing .rest{display:none}
+.sug-chip{position:fixed;z-index:80;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;border:1px solid rgba(51,191,240,.55);
+  background:rgba(14,40,54,.96);color:#fff;font:600 14px var(--f-mono);box-shadow:0 8px 22px rgba(0,0,0,.45);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);animation:sugIn .15s ease-out}
+.sug-chip span{color:var(--cer-hi);font-size:12px}
+.sug-chip[hidden]{display:none}
+@keyframes sugIn{from{opacity:0;transform:translate(-50%,-4px)}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 <style>
@@ -1515,6 +1520,34 @@ async function askNotify() {
 }
 async function keepAwake() { try { if (active && S.state.settings.wake && navigator.wakeLock && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => wakeLock = null); } } catch {} }
 function releaseAwake() { try { wakeLock && wakeLock.release(); } catch {} wakeLock = null; }
+/* Sugestão de completar: ao tocar num campo vazio de carga/reps, aparece logo abaixo um botão com o valor da série de cima */
+const sugChip = (() => { const b = document.createElement("button"); b.type = "button"; b.className = "sug-chip"; b.hidden = true; document.body.appendChild(b); return b; })();
+let sugFor = null;
+function sugPlace() {
+  if (!sugFor || !sugFor.isConnected || document.activeElement !== sugFor || sugFor.value !== "") { sugChip.hidden = true; return; }
+  const r = sugFor.getBoundingClientRect();
+  sugChip.style.left = Math.round(r.left + r.width / 2) + "px"; sugChip.style.top = Math.round(r.bottom + 6) + "px"; sugChip.hidden = false;
+}
+document.addEventListener("focusin", e => {
+  const t = e.target;
+  if (!(t.matches && t.matches('input[data-f="sload"], input[data-f="sreps"]')) || !active) { sugFor = null; sugChip.hidden = true; return; }
+  const ex = active.ex[+t.dataset.i], f = t.dataset.f === "sload" ? "load" : "reps", v = setHint(ex, +t.dataset.k, f);
+  const hasAbove = ex.sets.slice(0, +t.dataset.k).some(x => String(x[f] ?? "").trim() !== "");
+  if (t.value !== "" || !hasAbove) { sugFor = null; sugChip.hidden = true; return; }
+  sugFor = t; sugChip.dataset.v = v; sugChip.innerHTML = `<span>↵</span> ${esc(v)}${f === "load" ? " " + U() : " reps"}`;
+  requestAnimationFrame(sugPlace); setTimeout(sugPlace, 350);
+});
+document.addEventListener("focusout", () => setTimeout(() => { if (document.activeElement !== sugFor) { sugFor = null; sugChip.hidden = true; } }, 60));
+document.addEventListener("input", e => { if (e.target === sugFor) sugPlace(); });
+document.addEventListener("scroll", () => sugPlace(), true);
+if (window.visualViewport) visualViewport.addEventListener("resize", sugPlace);
+sugChip.addEventListener("pointerdown", e => e.preventDefault());
+sugChip.addEventListener("click", () => {
+  const t = sugFor; if (!t) return;
+  t.value = sugChip.dataset.v; t.dispatchEvent(new Event("input", {bubbles: true})); sugChip.hidden = true;
+  const next = t.dataset.f === "sload" ? document.getElementById(`s-${t.dataset.i}-${t.dataset.k}-r`) : null;
+  if (next && next.value === "") next.focus(); else t.blur();
+});
 /* Teclado aberto: esconde o menu de baixo para não cobrir os campos */
 document.addEventListener("focusin", e => { if (e.target.matches && e.target.matches("input:not([type=checkbox]):not([type=file]), textarea")) document.body.classList.add("typing"); });
 document.addEventListener("focusout", () => setTimeout(() => { const a = document.activeElement; if (!(a && a.matches && a.matches("input:not([type=checkbox]):not([type=file]), textarea"))) document.body.classList.remove("typing"); }, 50));
@@ -3019,7 +3052,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261105185800";</script>
+<script>window.SL_VERSION = "20261105191009";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
