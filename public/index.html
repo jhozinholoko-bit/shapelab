@@ -1498,6 +1498,7 @@ const REST_DONE = ["Acabou o recreio! Volta pra série.", "Descanso encerrado. O
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 function restNotify(kind) {
   if (!S.state.settings.notify || !canNotify() || Notification.permission !== "granted") return;
+  if (window.SL && window.SL.push && window.SL.push.active()) return; // o servidor já manda
   const done = kind === "done";
   const title = done ? "⏱ Descanso acabou" : "⏳ Prepare-se", opt = {body: pick(done ? REST_DONE : REST_SOON), tag: "sl-rest", renotify: true, silent: true, icon: "icons/icon-192.png", badge: "icons/icon-192.png"};
   try {
@@ -1509,7 +1510,7 @@ async function askNotify() {
   if (!canNotify()) { toast("Este navegador não mostra notificações. No iPhone, instale o app na Tela de Início."); return false; }
   if (Notification.permission === "granted") return true;
   if (Notification.permission === "denied") { toast("Notificações bloqueadas. Libere nos ajustes do celular para o ShapeLab."); return false; }
-  try { return (await Notification.requestPermission()) === "granted"; } catch { return false; }
+  try { const ok = (await Notification.requestPermission()) === "granted"; if (ok && window.SL && window.SL.push) window.SL.push.setup(); return ok; } catch { return false; }
 }
 async function keepAwake() { try { if (active && S.state.settings.wake && navigator.wakeLock && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => wakeLock = null); } } catch {} }
 function releaseAwake() { try { wakeLock && wakeLock.release(); } catch {} wakeLock = null; }
@@ -1537,7 +1538,22 @@ function startWorkout(id) {
 }
 let rest = LS.get("fv_rest", null);
 if (rest && (!active || rest.end < Date.now() - 60000)) rest = null;
-const saveRest = () => rest ? LS.set("fv_rest", rest) : LS.del("fv_rest");
+const saveRest = () => { rest ? LS.set("fv_rest", rest) : LS.del("fv_rest"); pushSync(); };
+/* Agenda no servidor os avisos deste descanso (chegam mesmo com o app fechado). Sem descanso rodando, cancela. */
+let pushT = null;
+function pushSync() {
+  const P = window.SL && window.SL.push; if (!P) return;
+  clearTimeout(pushT);
+  pushT = setTimeout(() => {
+    const jobs = [];
+    if (S.state.settings.notify && rest && !rest.go && !rest.paused && active) {
+      const soon = rest.end - 3000;
+      if (soon > Date.now() + 2000) jobs.push({at: soon, title: "⏳ Prepare-se", body: pick(REST_SOON)});
+      jobs.push({at: rest.end, title: "⏱ Descanso acabou", body: pick(REST_DONE)});
+    }
+    P.schedule(jobs);
+  }, 250);
+}
 const RC = 2 * Math.PI * 22;
 const actEl = () => Math.max(0, Math.floor(((active.pausedAt ? new Date(active.pausedAt).getTime() : Date.now()) - new Date(active.startedAt)) / 1000));
 function pauseWorkout() {
@@ -2794,7 +2810,7 @@ const actions = {
   new: () => openEditor(null),
   edit: b => openEditor(b.dataset.id),
   dupe: b => { const r = S.state.routines.find(x => x.id === b.dataset.id); if (!r) return; const c = clone(r); c.id = uid(); c.name = r.name + " (cópia)"; c.exercises.forEach(e => e.id = uid()); S.state.routines.push(c); saveState(); toast("Ficha duplicada"); renderCurrent(); },
-  start: b => { ensureAudio(); if (S.state.settings.notify && canNotify() && Notification.permission === "default") { try { Notification.requestPermission(); } catch {} } startWorkout(b.dataset.id); },
+  start: b => { ensureAudio(); if (S.state.settings.notify && canNotify()) { const go = () => { if (window.SL && window.SL.push) window.SL.push.setup(); }; if (Notification.permission === "default") { try { Notification.requestPermission().then(go); } catch {} } else go(); } startWorkout(b.dataset.id); },
   browse: () => openPicker("browse"),
   pdfAll: () => exportPdf(null),
   pdfOne: b => exportPdf([b.dataset.id]),
@@ -2849,7 +2865,7 @@ const actions = {
   },
   skipEx: b => {
     const i = +b.dataset.i, e = active.ex[i];
-    e.skipped = true; e.sets.forEach(x => x.done = false); rest = null;
+    e.skipped = true; e.sets.forEach(x => x.done = false); rest = null; saveRest();
     saveActive(); renderTreino(); tick(); toast(`${e.name} pulado`);
     const next = active.ex.findIndex((x, j) => j > i && !x.skipped && !x.sets.every(y => y.done));
     const el = $("#xm-" + (next >= 0 ? next : i)); if (el) el.scrollIntoView({behavior: reduceMotion ? "auto" : "smooth", block: "start"});
@@ -2989,7 +3005,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261105184240";</script>
+<script>window.SL_VERSION = "20261105184650";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>

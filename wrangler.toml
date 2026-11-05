@@ -12,3 +12,12 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "shapelab-db"
+
+# Agendador dos avisos de descanso (um por usuário). Plano grátis: Durable Objects com SQLite.
+[[durable_objects.bindings]]
+name = "TIMER"
+class_name = "RestTimer"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RestTimer"]

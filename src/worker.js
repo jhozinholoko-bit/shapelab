@@ -18,7 +18,10 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS sl_photos (user_id TEXT NOT NULL, id TEXT NOT NULL, session_id TEXT, date TEXT, data TEXT NOT NULL, PRIMARY KEY (user_id, id))`,
   `CREATE INDEX IF NOT EXISTS sl_photos_date ON sl_photos (user_id, date)`,
   `CREATE TABLE IF NOT EXISTS sl_pin_failures (name_key TEXT NOT NULL, birth TEXT NOT NULL, at INTEGER NOT NULL)`,
-  `CREATE INDEX IF NOT EXISTS sl_pin_failures_lookup ON sl_pin_failures (name_key, birth, at)`
+  `CREATE INDEX IF NOT EXISTS sl_pin_failures_lookup ON sl_pin_failures (name_key, birth, at)`,
+  `CREATE TABLE IF NOT EXISTS sl_kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS sl_push (endpoint TEXT PRIMARY KEY, user_id TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at INTEGER NOT NULL)`,
+  `CREATE INDEX IF NOT EXISTS sl_push_user ON sl_push (user_id)`
 ];
 let schemaReady = null;
 const ensureSchema = db => schemaReady || (schemaReady = db.batch(SCHEMA.map(q => db.prepare(q))).catch(e => { schemaReady = null; throw e; }));
@@ -128,6 +131,104 @@ const API = {
   async delete_photo(db, a) { const u = await uidOf(db, a.p_token); await db.prepare("DELETE FROM sl_photos WHERE user_id = ? AND id = ?").bind(u, String(a.p_id || "")).run(); return true; }
 };
 
+/* ---------------- Notificação pelo servidor (Web Push) ----------------
+   - Chaves VAPID geradas uma vez e guardadas no D1 (sl_kv).
+   - O celular se inscreve (sl_push) e, a cada descanso, o app manda os horários dos avisos.
+   - Um Durable Object por usuário guarda os avisos e usa um alarme para disparar na hora. */
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64u = s => Uint8Array.from(atob(String(s).replace(/-/g, "+").replace(/_/g, "/") + "===".slice((String(s).length + 3) % 4)), c => c.charCodeAt(0));
+const cat = (...a) => { const o = new Uint8Array(a.reduce((t, x) => t + x.length, 0)); let i = 0; for (const x of a) { o.set(x, i); i += x.length; } return o; };
+
+async function vapidKeys(db) {
+  const r = await db.prepare("SELECT v FROM sl_kv WHERE k = 'vapid'").first();
+  if (r) return JSON.parse(r.v);
+  const kp = await crypto.subtle.generateKey({name: "ECDSA", namedCurve: "P-256"}, true, ["sign", "verify"]);
+  const v = {pub: b64u(await crypto.subtle.exportKey("raw", kp.publicKey)), jwk: await crypto.subtle.exportKey("jwk", kp.privateKey)};
+  await db.prepare("INSERT OR IGNORE INTO sl_kv (k, v) VALUES ('vapid', ?)").bind(JSON.stringify(v)).run();
+  return JSON.parse((await db.prepare("SELECT v FROM sl_kv WHERE k = 'vapid'").first()).v);
+}
+async function vapidAuth(v, endpoint, subject) {
+  const aud = new URL(endpoint).origin;
+  const head = b64u(enc.encode(JSON.stringify({typ: "JWT", alg: "ES256"})));
+  const body = b64u(enc.encode(JSON.stringify({aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: subject})));
+  const key = await crypto.subtle.importKey("jwk", v.jwk, {name: "ECDSA", namedCurve: "P-256"}, false, ["sign"]);
+  const sig = await crypto.subtle.sign({name: "ECDSA", hash: "SHA-256"}, key, enc.encode(head + "." + body));
+  return `vapid t=${head}.${body}.${b64u(sig)}, k=${v.pub}`;
+}
+async function hkdf(salt, ikm, info, len) {
+  const k = await crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]);
+  return new Uint8Array(await crypto.subtle.deriveBits({name: "HKDF", hash: "SHA-256", salt, info}, k, len * 8));
+}
+async function encryptPush(sub, payload) { // RFC 8291 (aes128gcm)
+  const uaPub = unb64u(sub.p256dh), auth = unb64u(sub.auth);
+  const as = await crypto.subtle.generateKey({name: "ECDH", namedCurve: "P-256"}, true, ["deriveBits"]);
+  const asPub = new Uint8Array(await crypto.subtle.exportKey("raw", as.publicKey));
+  const uaKey = await crypto.subtle.importKey("raw", uaPub, {name: "ECDH", namedCurve: "P-256"}, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({name: "ECDH", public: uaKey}, as.privateKey, 256));
+  const ikm = await hkdf(auth, shared, cat(enc.encode("WebPush: info\0"), uaPub, asPub), 32);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const cek = await hkdf(salt, ikm, enc.encode("Content-Encoding: aes128gcm\0"), 16);
+  const nonce = await hkdf(salt, ikm, enc.encode("Content-Encoding: nonce\0"), 12);
+  const key = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({name: "AES-GCM", iv: nonce}, key, cat(enc.encode(payload), new Uint8Array([2]))));
+  const rs = new Uint8Array([0, 0, 16, 0]);
+  return cat(salt, rs, new Uint8Array([65]), asPub, ct);
+}
+async function sendPush(db, sub, msg, subject) {
+  const v = await vapidKeys(db);
+  const body = await encryptPush(sub, JSON.stringify(msg));
+  const r = await fetch(sub.endpoint, {method: "POST", body, headers: {
+    "Content-Type": "application/octet-stream", "Content-Encoding": "aes128gcm", TTL: "120", Urgency: "high",
+    Authorization: await vapidAuth(v, sub.endpoint, subject)}});
+  if (r.status === 404 || r.status === 410) await db.prepare("DELETE FROM sl_push WHERE endpoint = ?").bind(sub.endpoint).run();
+  return r.status;
+}
+
+export class RestTimer {
+  constructor(state, env) { this.state = state; this.env = env; }
+  async fetch(req) {
+    const {uid, jobs, subject} = await req.json();
+    const now = Date.now();
+    const list = (Array.isArray(jobs) ? jobs : []).filter(j => j && j.at > now - 5000 && j.at < now + 3600e3).slice(0, 4)
+      .map(j => ({at: Math.round(j.at), title: String(j.title || "ShapeLab").slice(0, 60), body: String(j.body || "").slice(0, 160)}));
+    await this.state.storage.put("job", {uid, subject, list});
+    if (list.length) await this.state.storage.setAlarm(Math.min(...list.map(j => j.at)));
+    else await this.state.storage.deleteAlarm();
+    return new Response(JSON.stringify({ok: true, scheduled: list.length}));
+  }
+  async alarm() {
+    const job = await this.state.storage.get("job"); if (!job) return;
+    const now = Date.now(), due = job.list.filter(j => j.at <= now + 400), rest = job.list.filter(j => j.at > now + 400);
+    if (due.length) {
+      await ensureSchema(this.env.DB);
+      const subs = (await this.env.DB.prepare("SELECT endpoint, p256dh, auth FROM sl_push WHERE user_id = ?").bind(job.uid).all()).results;
+      const last = due[due.length - 1];
+      await Promise.all(subs.map(s => sendPush(this.env.DB, s, {title: last.title, body: last.body}, job.subject).catch(e => console.error("push", e && e.message))));
+    }
+    job.list = rest; await this.state.storage.put("job", job);
+    if (rest.length) await this.state.storage.setAlarm(Math.min(...rest.map(j => j.at)));
+  }
+}
+const pushAPI = {
+  async vapid_key(db) { return {key: (await vapidKeys(db)).pub}; },
+  async push_subscribe(db, a) {
+    const u = await uidOf(db, a.p_token), s = a.sub || {}, k = s.keys || {};
+    if (!/^https:\/\//.test(String(s.endpoint || "")) || !k.p256dh || !k.auth) fail("invalid_subscription");
+    await db.prepare("INSERT INTO sl_push (endpoint, user_id, p256dh, auth, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth")
+      .bind(String(s.endpoint).slice(0, 1000), u, String(k.p256dh).slice(0, 200), String(k.auth).slice(0, 100), Date.now()).run();
+    const n = await db.prepare("SELECT COUNT(*) AS n FROM sl_push WHERE user_id = ?").bind(u).first();
+    if (n.n > 5) await db.prepare("DELETE FROM sl_push WHERE user_id = ? AND endpoint NOT IN (SELECT endpoint FROM sl_push WHERE user_id = ? ORDER BY created_at DESC LIMIT 5)").bind(u, u).run();
+    return true;
+  },
+  async push_schedule(db, a, env, url) {
+    const u = await uidOf(db, a.p_token);
+    if (!env.TIMER) fail("push_unavailable");
+    const stub = env.TIMER.get(env.TIMER.idFromName(u));
+    const r = await stub.fetch("https://timer/set", {method: "POST", body: JSON.stringify({uid: u, jobs: a.jobs || [], subject: url.origin})});
+    return await r.json();
+  }
+};
+
 const reply = (status, body) => new Response(JSON.stringify(body), {status, headers: {"Content-Type": "application/json", "Cache-Control": "no-store"}});
 
 export default {
@@ -136,13 +237,13 @@ export default {
     const m = url.pathname.match(/^\/api\/([a-z_]+)$/);
     if (!m) return env.ASSETS.fetch(req);
     if (req.method !== "POST") return reply(405, {message: "method_not_allowed"});
-    const fn = API[m[1]];
+    const fn = API[m[1]] || pushAPI[m[1]];
     if (!fn) return reply(404, {message: "not_found"});
     let args = {};
     try { const t = await req.text(); if (t.length > 1.5e6) return reply(413, {message: "too_large"}); args = t ? JSON.parse(t) : {}; } catch { return reply(400, {message: "bad_json"}); }
     try {
       await ensureSchema(env.DB);
-      return reply(200, await fn(env.DB, args || {}));
+      return reply(200, await fn(env.DB, args || {}, env, url));
     } catch (e) {
       if (e instanceof AppError) return reply(400, {message: e.message});
       console.error(m[1], e && e.stack || e);

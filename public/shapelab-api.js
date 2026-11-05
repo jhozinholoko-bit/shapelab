@@ -110,7 +110,34 @@
 
   const CAPS = {user: () => user, db: () => db, sample: () => (COACH ? sample : null), downloads: () => downloads, assets: () => null};
   window.SLCAP = {use: async name => (CAPS[name] ? CAPS[name]() : null)};
+  /* Notificação pelo servidor: inscreve o celular e agenda os avisos do descanso */
+  const PUSH = {ready: false, busy: null, lastKey: ""};
+  const u8 = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+  async function pushSetup() {
+    if (PUSH.ready) return true;
+    if (PUSH.busy) return PUSH.busy;
+    PUSH.busy = (async () => {
+      try {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window) || !window.Notification || Notification.permission !== "granted" || !token()) return false;
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) { const {key} = await rpc("vapid_key", {}); sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: u8(key)}); }
+        await rpc("push_subscribe", {p_token: token(), sub: sub.toJSON()});
+        PUSH.ready = true; return true;
+      } catch (e) { console.warn("push", e && e.message); return false; } finally { PUSH.busy = null; }
+    })();
+    return PUSH.busy;
+  }
+  async function pushSchedule(jobs) {
+    const key = JSON.stringify(jobs.map(j => Math.round(j.at / 1000)));
+    if (key === PUSH.lastKey) return PUSH.ready;
+    PUSH.lastKey = key;
+    if (!(await pushSetup())) return false;
+    try { await rpc("push_schedule", {p_token: token(), jobs}); return true; } catch { return false; }
+  }
+
   window.SL = {
+    push: {setup: pushSetup, schedule: pushSchedule, active: () => PUSH.ready},
     name: () => store.get(K.name),
     async logout() { try { await rpc("logout", {p_token: token()}); } catch {} [K.token, K.uid, K.name].forEach(store.del); clearAppData(); location.reload(); }
   };
@@ -122,6 +149,7 @@
     if (last !== uid) { clearAppData(); try { localStorage.setItem(K.last, uid); } catch {} }
     const box = document.getElementById("slAuth"); if (box) box.remove();
     if (typeof window.SL_MAIN === "function") { const run = window.SL_MAIN; window.SL_MAIN = null; run(); }
+    try { if (window.Notification && Notification.permission === "granted") setTimeout(pushSetup, 1500); } catch {}
   }
 
 /* Bolhas do frasco: sobem no líquido, uma escapa pela boca e estoura em respingos. */
