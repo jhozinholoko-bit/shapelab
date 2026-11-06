@@ -1402,15 +1402,28 @@ function demoBox(name, group, live) {
 const GX_EN = {"Supino reto com barra": "barbell bench press", "Supino reto com halteres": "dumbbell bench press", "Flexão de braço": "push-up", "Supino com elástico": "band bench press", "Supino inclinado com barra": "barbell incline bench press", "Supino inclinado com halteres": "dumbbell incline bench press", "Flexão inclinada": "incline push-up", "Crossover na polia": "cable cross-over", "Peck deck": "lever seated fly", "Crucifixo com halteres": "dumbbell fly", "Puxada frontal": "cable pulldown", "Barra fixa": "pull-up", "Puxada alta com elástico": "band lat pulldown", "Remada baixa no cabo": "cable seated row", "Remada curvada com barra": "barbell bent over row", "Remada unilateral com halter": "dumbbell one arm bent-over row", "Remada com elástico": "band seated row", "Remada invertida": "inverted row", "Desenvolvimento máquina": "lever shoulder press", "Desenvolvimento com halteres": "dumbbell seated shoulder press", "Desenvolvimento com elástico": "band shoulder press", "Flexão pike": "pike push up", "Elevação lateral na polia": "cable lateral raise", "Elevação lateral": "dumbbell lateral raise", "Elevação lateral com elástico": "band lateral raise", "Face pull": "cable rear delt row", "Crucifixo inverso com halteres": "dumbbell rear fly", "Band pull-apart": "band pull apart", "Y-T-W no chão": "dumbbell lying y raise", "Rosca direta com barra": "barbell curl", "Rosca alternada": "dumbbell alternate biceps curl", "Rosca martelo": "dumbbell hammer curl", "Rosca com elástico": "band alternating biceps curl", "Tríceps corda": "cable triceps pushdown rope", "Tríceps pulley": "cable pushdown", "Tríceps francês com halter": "dumbbell seated triceps extension", "Tríceps com elástico": "band triceps extension", "Tríceps banco": "bench dip", "Agachamento livre": "barbell full squat", "Leg press 45°": "sled 45° leg press", "Agachamento goblet": "dumbbell goblet squat", "Agachamento com elástico": "band squat", "Agachamento livre sem peso": "bodyweight squat", "Cadeira extensora": "lever leg extension", "Agachamento búlgaro": "bulgarian split squat", "Afundo alternado": "dumbbell lunge", "Step-up no banco": "dumbbell step-up", "Levantamento terra romeno": "barbell romanian deadlift", "Stiff com halteres": "dumbbell stiff leg deadlift", "Good morning com elástico": "band good morning", "Elevação pélvica unilateral": "single leg bridge", "Mesa flexora": "lever lying leg curl", "Flexora com elástico": "band lying leg curl", "Ponte de isquiotibiais": "hamstring bridge", "Elevação pélvica": "barbell hip thrust", "Elevação pélvica com halter": "dumbbell hip thrust", "Abdução com elástico": "band hip abduction", "Ponte de glúteo": "glute bridge", "Panturrilha em pé": "standing calf raise", "Panturrilha no degrau": "dumbbell single leg calf raise", "Abdominal na polia": "cable kneeling crunch", "Dead bug": "dead bug", "Prancha": "front plank", "Pallof press": "band horizontal pallof press", "Prancha lateral": "side bridge", "Perdigueiro": "bird dog", "Rotação torácica no solo": "thoracic rotation", "Deslizamento na parede": "wall slide", "Retração cervical": "neck retraction", "Gato-camelo": "cat cow stretch", "Rotação externa com elástico": "band external shoulder rotation", "Alongamento de flexor do quadril": "hip flexor stretch", "Abertura de quadril 90/90": "90 90 hip switch", "Bom dia sem peso": "bodyweight good morning", "Bicicleta ergométrica": "stationary bike", "Esteira inclinada": "walking on incline treadmill", "Polichinelo": "jumping jack"};
 const GX_API = "https://oss.exercisedb.dev/api/v1";
 const gxMem = new Map(); // só na memória, some ao fechar o app
+/* Escolhe, entre os resultados, o nome mais parecido com a busca; ignora respostas que não batem
+   (algumas rotas da API devolvem a lista inteira sem filtrar, e aí todo exercício vinha com o mesmo GIF). */
+const gxToks = t => String(t || "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(" ").filter(w => w.length > 1);
+function gxScore(q, name) { const a = gxToks(q), b = gxToks(name); if (!a.length || !b.length) return 0; const hit = a.filter(w => b.some(v => v === w || v.startsWith(w) || w.startsWith(v))).length; return hit / Math.max(a.length, b.length * .8); }
+let gxRoute = null; // a primeira rota que filtrar de verdade fica lembrada nesta sessão
 async function gxFind(q) {
   const hit = gxMem.get(q); if (hit && Date.now() - hit.t < 3600e3) return hit.p;
   const p = (async () => {
-    for (const u of [`${GX_API}/exercises/search?q=${encodeURIComponent(q)}&limit=1&threshold=0.3`, `${GX_API}/exercises?search=${encodeURIComponent(q)}&limit=1`]) {
+    const e = encodeURIComponent(q);
+    const routes = [
+      ["s1", `${GX_API}/exercises/search?q=${e}&limit=10`], ["s2", `${GX_API}/exercises/search?search=${e}&limit=10`],
+      ["s3", `${GX_API}/exercises?search=${e}&limit=10`], ["s4", `${GX_API}/exercises?name=${e}&limit=10`],
+      ["s5", `${GX_API}/exercises/name/${e}?limit=10`], ["s6", `${GX_API}/exercises?q=${e}&limit=10`]];
+    const order = gxRoute ? [routes.find(r => r[0] === gxRoute), ...routes.filter(r => r[0] !== gxRoute)] : routes;
+    for (const [id, u] of order) {
       try {
         const r = await fetch(u, {cache: "no-store"}); if (!r.ok) continue;
         const j = await r.json(), arr = Array.isArray(j) ? j : Array.isArray(j.data) ? j.data : j.data && Array.isArray(j.data.exercises) ? j.data.exercises : [];
-        const it = arr[0]; const g = it && (it.gifUrl || it.gif_url || it.imageUrl);
-        if (g) return g;
+        let best = null, bs = 0;
+        for (const it of arr) { const sc = gxScore(q, it.name); if (sc > bs) { bs = sc; best = it; } }
+        const g = best && (best.gifUrl || best.gif_url || best.imageUrl);
+        if (g && bs >= .5) { gxRoute = id; return g; }
       } catch {}
     }
     return null;
@@ -3087,7 +3100,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261106014804";</script>
+<script>window.SL_VERSION = "20261106015052";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
