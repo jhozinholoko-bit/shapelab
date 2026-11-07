@@ -440,6 +440,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(51,191,24
 .demo.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}
 .exec-big .demo.ph{aspect-ratio:3/2}
 .exec-big:has(.demo.ph){width:100%}
+.demo.ph:has(video){background:#24252a}
+.demo.ph video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;-webkit-mask-image:radial-gradient(closest-side,#000 82%,transparent);mask-image:radial-gradient(closest-side,#000 82%,transparent)}
 .demo.ph img.f2{animation:phflip 2.4s steps(1) infinite}
 .demo.ph svg{display:none}
 .demo.ph.noph img{display:none}
@@ -457,11 +459,19 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(51,191,24
 .dm-eqf{fill:var(--fg)}
 .dm-cb{stroke:var(--muted);stroke-width:1.2}
 .dm-bd{stroke:var(--rose);stroke-width:2;stroke-dasharray:4 2}
-.exec{display:grid;grid-template-columns:116px minmax(0,1fr);gap:14px;align-items:start}
+.exec{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+.exec>.demo{aspect-ratio:4/5}
+.exec .exec-links{flex-direction:column;align-items:flex-start;gap:10px;margin-top:14px}
 .exec .cues-l{margin:0}
 .exec-links{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px}
 .exec-big{width:min(280px,72vw);margin:0 auto}
 .li .demo{width:56px;border-radius:14px}
+.li.open{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:start;gap:10px 12px}
+.li.open>.demo{grid-column:1;grid-row:1/4;width:100%;aspect-ratio:4/5}
+.li.open>.li-main{grid-column:2;grid-row:1;padding-top:4px}
+.li.open>.li-add,.li.open>span:empty{grid-column:3;grid-row:1}
+.li.open>.cues-l{grid-column:2/-1;grid-row:2;margin:0}
+.li.open>.exec-links{grid-column:2/-1!important;grid-row:3;flex-direction:column;align-items:flex-start;gap:2px;margin-top:0}
 
 /* dock */
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:50;pointer-events:none;
@@ -609,7 +619,6 @@ body.booting .hud-top,body.booting .dock{display:none}
 .coach-hint{padding:14px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px}
 
 @media (max-width:430px){
-  .exec{grid-template-columns:96px minmax(0,1fr)}
   .exed-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .reactor{grid-template-columns:116px minmax(0,1fr);gap:14px;padding:16px}
   .ring{width:116px;height:116px}
@@ -1380,6 +1389,7 @@ function subMedia(db) {
 }
 /* Fotos reais (Free Exercise DB, domínio público): início e fim do movimento alternando. */
 const EXPH = {"Supino reto com barra": "supino-reto-com-barra", "Supino reto com halteres": "supino-reto-com-halteres", "Flexão de braço": "flexao-de-braco", "Supino com elástico": "supino-com-elastico", "Supino inclinado com barra": "supino-inclinado-com-barra", "Supino inclinado com halteres": "supino-inclinado-com-halteres", "Flexão inclinada": "flexao-inclinada", "Crossover na polia": "crossover-na-polia", "Peck deck": "peck-deck", "Crucifixo com halteres": "crucifixo-com-halteres", "Puxada frontal": "puxada-frontal", "Barra fixa": "barra-fixa", "Puxada alta com elástico": "puxada-alta-com-elastico", "Remada baixa no cabo": "remada-baixa-no-cabo", "Remada curvada com barra": "remada-curvada-com-barra", "Remada unilateral com halter": "remada-unilateral-com-halter", "Remada com elástico": "remada-com-elastico", "Remada invertida": "remada-invertida", "Desenvolvimento máquina": "desenvolvimento-maquina", "Desenvolvimento com halteres": "desenvolvimento-com-halteres", "Desenvolvimento com elástico": "desenvolvimento-com-elastico", "Elevação lateral na polia": "elevacao-lateral-na-polia", "Elevação lateral": "elevacao-lateral", "Elevação lateral com elástico": "elevacao-lateral-com-elastico", "Face pull": "face-pull", "Crucifixo inverso com halteres": "crucifixo-inverso-com-halteres", "Band pull-apart": "band-pull-apart", "Rosca direta com barra": "rosca-direta-com-barra", "Rosca alternada": "rosca-alternada", "Rosca martelo": "rosca-martelo", "Rosca com elástico": "rosca-com-elastico", "Tríceps corda": "triceps-corda", "Tríceps pulley": "triceps-pulley", "Tríceps francês com halter": "triceps-frances-com-halter", "Tríceps com elástico": "triceps-com-elastico", "Tríceps banco": "triceps-banco", "Agachamento livre": "agachamento-livre", "Leg press 45°": "leg-press-45", "Agachamento goblet": "agachamento-goblet", "Agachamento com elástico": "agachamento-com-elastico", "Agachamento livre sem peso": "agachamento-livre-sem-peso", "Cadeira extensora": "cadeira-extensora", "Agachamento búlgaro": "agachamento-bulgaro", "Afundo alternado": "afundo-alternado", "Step-up no banco": "step-up-no-banco", "Levantamento terra romeno": "levantamento-terra-romeno", "Stiff com halteres": "stiff-com-halteres", "Good morning com elástico": "good-morning-com-elastico", "Elevação pélvica unilateral": "elevacao-pelvica-unilateral", "Mesa flexora": "mesa-flexora", "Flexora com elástico": "flexora-com-elastico", "Elevação pélvica": "elevacao-pelvica", "Elevação pélvica com halter": "elevacao-pelvica-com-halter", "Ponte de glúteo": "ponte-de-gluteo", "Panturrilha em pé": "panturrilha-em-pe", "Panturrilha no degrau": "panturrilha-no-degrau", "Abdominal na polia": "abdominal-na-polia", "Dead bug": "dead-bug", "Prancha": "prancha", "Pallof press": "pallof-press", "Prancha lateral": "prancha-lateral", "Gato-camelo": "gato-camelo", "Rotação externa com elástico": "rotacao-externa-com-elastico", "Alongamento de flexor do quadril": "alongamento-de-flexor-do-quadril", "Bicicleta ergométrica": "bicicleta-ergometrica", "Esteira inclinada": "esteira-inclinada", "Polichinelo": "polichinelo"};
+const EXV = {"Flexão pike": "flexao-pike"};
 function demoBox(name, group, live) {
   const L = byName(name), nm = L ? L.name : name, gr = L ? L.group : group;
   const m = MEDIA[slug(nm)];
@@ -1387,6 +1397,8 @@ function demoBox(name, group, live) {
     const src = "/_blob/" + m.id;
     return `<div class="demo">${/^video/.test(m.type) ? `<video src="${src}" muted loop autoplay playsinline aria-label="Vídeo de ${esc(nm)}"></video>` : `<img src="${src}" alt="Execução de ${esc(nm)}" loading="lazy">`}<span class="dm-tag own">Mídia própria</span></div>`;
   }
+  const vv = EXV[nm];
+  if (vv) return `<div class="demo ph" role="img" aria-label="Execução de ${esc(nm)}"><video src="ex/${vv}.mp4" muted loop autoplay playsinline disablepictureinpicture preload="auto"></video></div>`;
   const ph = EXPH[nm];
   if (ph) return `<div class="demo ph" role="img" aria-label="Execução de ${esc(nm)}"><img src="ex/${ph}-0.webp" alt="" loading="lazy" onerror="this.parentNode.classList.add('noph')"><img class="f2" src="ex/${ph}-1.webp" alt="" loading="lazy"><svg viewBox="0 0 200 200" class="demo-svg" data-dn="${esc(nm)}" data-dg="${esc(gr || "")}" ${live ? "data-live" : ""}></svg></div>`;
   const r = DEMO.resolve(nm, gr);
@@ -2229,7 +2241,7 @@ function renderPickList() {
   const act = pk.mode === "browse" ? "" : pk.mode === "swap" ? "swapTo" : "addEx";
   const custom = q && act === "addEx" && !LIB.some(x => x.name.toLowerCase() === q)
     ? `<div class="li"><span></span><div class="li-main"><b>${esc(pk.q.trim())}</b><span class="li-tags">Exercício próprio</span></div><button class="li-add" data-a="addEx" data-n="${esc(pk.q.trim())}" aria-label="Adicionar">+</button></div>` : "";
-  $("#pkList").innerHTML = custom + (items.length ? items.map(x => `<div class="li">${demoBox(x.name, x.group, pk.open === x.name)}
+  $("#pkList").innerHTML = custom + (items.length ? items.map(x => `<div class="li${pk.open === x.name ? " open" : ""}">${demoBox(x.name, x.group, pk.open === x.name)}
       <button class="li-main" data-a="pkOpen" data-n="${esc(x.name)}" aria-expanded="${pk.open === x.name}"><b>${esc(x.name)}</b><span class="li-tags">${esc(x.group)} · ${EQTAG[x.equip]}${x.postural ? " · <i>◇ postural</i>" : ""}</span></button>
       ${act ? `<button class="li-add" data-a="${act}" data-n="${esc(x.name)}" aria-label="${act === "swapTo" ? "Trocar por" : "Adicionar"} ${esc(x.name)}">${act === "swapTo" ? "⇄" : "+"}</button>` : `<span></span>`}
       ${pk.open === x.name ? `<ol class="cues-l">${x.cues.map((c, i) => `<li data-n="0${i + 1}">${esc(c)}</li>`).join("")}</ol><div class="exec-links" style="grid-column:1/-1"><button class="lnk" data-a="exec" data-n="${esc(x.name)}" data-g="${esc(x.group)}" data-back="picker">⤢ Ver execução</button><a class="lnk" href="${yt(x.name)}" target="_blank" rel="noopener">▶ Vídeo real</a></div>` : ""}
@@ -3052,7 +3064,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261106015403";</script>
+<script>window.SL_VERSION = "20261107160225";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
