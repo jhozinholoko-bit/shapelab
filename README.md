@@ -56,4 +56,4 @@ Proteções ativas:
 
 - Com o app em segundo plano ou a tela bloqueada, o celular não toca o alarme do descanso. O tempo continua contando e o alarme toca ao voltar.
 - No iPhone, com o modo silencioso ligado, os sons do app não tocam. Vibração não existe no iPhone pelo navegador.
-- Fotos dos exercícios: Free Exercise DB (domínio público). 10 exercícios de mobilidade usam animação própria.
+- Fotos dos exercícios: Free Exercise DB (domínio público), mais de 200 exercícios na biblioteca. Alguns exercícios de mobilidade usam animação própria.

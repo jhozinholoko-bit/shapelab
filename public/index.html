@@ -918,9 +918,144 @@ const RAW = [
 ["Bom dia sem peso","Mobilidade","mobL","c",1,"Mãos atrás da cabeça|Quadril para trás com a coluna neutra|Sinta alongar o posterior",""],
 ["Bicicleta ergométrica","Cardio","cardio","g",0,"Banco na altura do quadril|Ritmo em que ainda dá para falar|Postura alta, sem curvar",""],
 ["Esteira inclinada","Cardio","cardio","g",0,"Inclinação de 8 a 12%|Não segure no corrimão|Ritmo moderado e constante",""],
-["Polichinelo","Cardio","cardio","c",0,"Aterrisse macio, na ponta dos pés|Ritmo contínuo|Respiração constante",""]
+["Polichinelo","Cardio","cardio","c",0,"Aterrisse macio, na ponta dos pés|Ritmo contínuo|Respiração constante",""],
+/* extras da biblioteca (Free Exercise DB): aparecem na busca e na troca, não entram nas fichas geradas */
+["Supino declinado com barra","Peito","hpush","g",0,"Pernas presas no apoio do banco|Barra desce na parte baixa do peito|Escápulas encaixadas, cotovelos a ~45°","ombros",1],
+["Supino declinado com halteres","Peito","hpush","d",0,"Pés presos e tronco firme no banco|Halteres descem até a linha do peito|Suba sem bater os halteres","",1],
+["Supino máquina","Peito","hpush","g",0,"Pegada na altura do meio do peito|Escápulas coladas no encosto|Empurre sem travar os cotovelos","",1],
+["Supino articulado","Peito","hpush","g",0,"Banco ajustado com a pegada na linha do peito|Costas e escápulas no encosto|Volte devagar até sentir o peito alongar","",1],
+["Supino inclinado articulado","Peito","ipush","g",0,"Pegada na altura da parte alta do peito|Escápulas encaixadas no encosto|Empurre para cima e à frente sem travar","",1],
+["Supino reto no Smith","Peito","hpush","g",0,"Barra alinhada com o meio do peito|Escápulas retraídas no banco|Desça controlando até perto do peito","ombros",1],
+["Supino inclinado no Smith","Peito","ipush","g",0,"Banco a 30–45°|Barra desce na parte alta do peito|Cotovelos a ~45°, sem abrir demais","ombros",1],
+["Supino inclinado pegada neutra","Peito","ipush","d",0,"Palmas viradas uma para a outra|Cotovelos próximos ao corpo|Desça até a linha do peito e suba firme","",1],
+["Supino reto pegada neutra","Peito","hpush","d",0,"Palmas viradas uma para a outra|Escápulas para trás e para baixo|Halteres descem rente ao tronco","",1],
+["Crucifixo inclinado com halteres","Peito","fly","d",0,"Banco a 30–45°, cotovelos levemente dobrados|Abra até sentir o peito alongar|Feche como se abraçasse uma árvore","ombros",1],
+["Crucifixo declinado com halteres","Peito","fly","d",0,"Cotovelos levemente dobrados e fixos|Abra em arco até a linha do peito|Feche contraindo o peito","",1],
+["Crucifixo na polia","Peito","fly","g",0,"Banco entre as polias, polias baixas|Cotovelos levemente dobrados|Feche em arco sobre o peito","",1],
+["Crucifixo inclinado na polia","Peito","fly","g",0,"Banco inclinado entre as polias baixas|Abra até sentir o peito alongar|Feche acima da parte alta do peito","",1],
+["Crossover polia baixa","Peito","fly","g",0,"Polias embaixo, tronco levemente à frente|Suba os braços em arco até a altura do queixo|Contraia a parte alta do peito no topo","",1],
+["Crossover unilateral","Peito","fly","g",0,"Um braço por vez, tronco firme|Cotovelo levemente dobrado|Leve a mão até a linha do meio do corpo","",1],
+["Crucifixo com elástico","Peito","fly","e",0,"Elástico ancorado atrás, na altura do peito|Cotovelos levemente dobrados|Feche os braços à frente e volte devagar","",1],
+["Supino em pé na polia","Peito","hpush","g",0,"Um pé à frente para dar base|Empurre as mãos à frente na altura do peito|Abdômen firme, sem arquear","",1],
+["Supino inclinado na polia","Peito","ipush","g",0,"Banco inclinado entre as polias|Empurre para cima e à frente|Volte controlando até a linha do peito","",1],
+["Paralelas (peito)","Peito","hpush","c",0,"Tronco inclinado à frente|Desça até os ombros na linha dos cotovelos|Suba empurrando sem travar","ombros",1],
+["Flexão aberta","Peito","hpush","c",0,"Mãos bem além da largura dos ombros|Corpo em linha reta|Peito desce perto do chão","",1],
+["Flexão declinada","Peito","ipush","c",0,"Pés em cima do banco|Corpo em linha reta, sem cair o quadril|Desça até o peito perto do chão","",1],
+["Pullover com halter","Peito","fly","d",0,"Halter seguro com as duas mãos sobre o peito|Leve atrás da cabeça com cotovelos quase retos|Volte usando peito e costas","ombros",1],
+["Puxada fechada","Costas","vpull","g",0,"Pegada na largura dos ombros|Puxe a barra até a parte alta do peito|Cotovelos para baixo, peito para cima","",1],
+["Puxada triângulo","Costas","vpull","g",0,"Tronco levemente inclinado para trás|Puxe o triângulo até o peito|Aperte as escápulas embaixo","",1],
+["Puxada supinada","Costas","vpull","g",0,"Palmas viradas para você|Puxe até a parte alta do peito|Cotovelos descem rente ao corpo","",1],
+["Puxada unilateral","Costas","vpull","g",0,"Um braço por vez, tronco firme|Puxe o cotovelo em direção ao quadril|Suba devagar alongando as costas","",1],
+["Pulldown braços estendidos","Costas","vpull","g",0,"Braços quase retos, leve inclinação à frente|Leve a barra até as coxas|Sem dobrar os cotovelos","",1],
+["Pulldown com corda","Costas","vpull","g",0,"Braços quase retos segurando a corda|Leve a corda até as coxas abrindo as pontas|Costas fazem o movimento, não os braços","",1],
+["Barra fixa supinada","Costas","vpull","c",0,"Palmas viradas para você|Suba até o queixo passar a barra|Desça até esticar os braços","",1],
+["Barra fixa com elástico","Costas","vpull","e",0,"Joelho ou pé apoiado no elástico|Suba até o queixo passar a barra|Desça devagar até esticar os braços","",1],
+["Barra fixa com carga","Costas","vpull","g",0,"Carga presa no cinto ou entre os pés|Suba com peito em direção à barra|Desça controlando","ombros",1],
+["Remada curvada com halteres","Costas","hpull","d",0,"Tronco inclinado, coluna neutra|Puxe os halteres até o quadril|Aperte as escápulas no topo","lombar",1],
+["Remada cavalinho","Costas","hpull","g",0,"Joelhos flexionados, coluna neutra|Puxe até a barriga|Cotovelos para trás, sem jogar o tronco","lombar",1],
+["Remada cavalinho apoiado","Costas","hpull","g",0,"Peito apoiado no banco|Puxe até a barriga|Aperte as escápulas no topo","",1],
+["Remada unilateral na polia","Costas","hpull","g",0,"Sentado, coluna alta|Puxe o cotovelo para trás rente ao corpo|Volte alongando sem girar o tronco","",1],
+["Remada apoiada no banco inclinado","Costas","hpull","d",0,"Peito apoiado no banco inclinado|Puxe os halteres até a lateral do tronco|Aperte as escápulas no topo","",1],
+["Remada curvada no Smith","Costas","hpull","g",0,"Tronco inclinado, coluna neutra|Puxe a barra até a barriga|Desça controlando","lombar",1],
+["Remada curvada supinada","Costas","hpull","g",0,"Palmas viradas para cima|Tronco inclinado, coluna neutra|Puxe até a barriga com cotovelos rentes","lombar",1],
+["Remada alta articulada","Costas","hpull","g",0,"Peito apoiado no encosto|Puxe os cotovelos para baixo e para trás|Aperte as escápulas","",1],
+["Remada articulada","Costas","hpull","g",0,"Peito apoiado no encosto|Puxe até a lateral do tronco|Volte devagar sem soltar a carga","",1],
+["Remada no TRX","Costas","hpull","c",0,"Corpo reto, calcanhares no chão|Puxe o peito até as mãos|Aperte as escápulas no topo","",1],
+["Hiperextensão lombar","Costas","hinge","g",1,"Quadril apoiado na borda do banco|Desça com a coluna neutra|Suba até alinhar o corpo, sem passar","lombar",1],
+["Levantamento terra","Posterior","hinge","g",0,"Barra colada às canelas|Coluna neutra, peito aberto|Empurre o chão e estenda quadril e joelhos juntos","lombar",1],
+["Terra sumô","Posterior","hinge","g",0,"Pés bem abertos, pontas para fora|Barra colada ao corpo, coluna neutra|Empurre o chão abrindo os joelhos","lombar",1],
+["Levantamento terra com barra hexagonal","Posterior","hinge","g",0,"Pés na largura do quadril dentro da barra|Coluna neutra, peito aberto|Empurre o chão até ficar em pé","lombar",1],
+["Stiff com barra","Posterior","hinge","g",0,"Joelhos levemente flexionados|Leve o quadril para trás com coluna neutra|Barra desce rente às pernas","lombar",1],
+["Good morning com barra","Posterior","hinge","g",0,"Barra apoiada no trapézio|Quadril para trás, coluna neutra|Desça até sentir o posterior alongar","lombar",1],
+["Pull through na polia","Glúteos","hinge","g",0,"De costas para a polia baixa, corda entre as pernas|Quadril para trás com coluna neutra|Estenda o quadril contraindo o glúteo","",1],
+["Cadeira flexora","Posterior","ham","g",0,"Joelho alinhado ao eixo da máquina|Puxe os calcanhares para baixo|Volte devagar sem soltar a carga","",1],
+["Flexora em pé","Posterior","ham","g",0,"Joelho alinhado ao eixo da máquina|Leve o calcanhar ao glúteo|Quadril parado, sem jogar o corpo","",1],
+["Glute ham raise","Posterior","ham","g",0,"Joelhos apoiados e pés presos|Desça com o corpo reto|Suba puxando com o posterior","joelhos",1],
+["Stiff unilateral","Posterior","hinge","d",0,"Peso na mão oposta à perna de apoio|Quadril para trás, perna de trás sobe junto|Coluna neutra e quadril nivelado","",1],
+["Kettlebell swing","Posterior","hinge","d",0,"Quadril para trás, coluna neutra|Projete o quadril à frente para subir o peso|Braços só guiam, o quadril empurra","lombar",1],
+["Agachamento livre profundo","Quadríceps","squat","g",0,"Barra no trapézio, pés na largura dos ombros|Desça abaixo da linha do joelho|Joelhos seguem a ponta dos pés","joelhos",1],
+["Agachamento frontal","Quadríceps","squat","g",0,"Barra apoiada à frente dos ombros|Cotovelos altos, tronco ereto|Desça até a coxa paralela","joelhos",1],
+["Agachamento hack","Quadríceps","squat","g",0,"Costas apoiadas no encosto|Pés no meio da plataforma|Desça até a coxa paralela","joelhos",1],
+["Agachamento no Smith","Quadríceps","squat","g",0,"Pés levemente à frente da barra|Desça até a coxa paralela|Joelhos seguem a ponta dos pés","joelhos",1],
+["Agachamento no banco","Quadríceps","squat","g",0,"Banco atrás na altura do joelho|Sente de leve sem relaxar|Suba empurrando o chão","",1],
+["Agachamento sumô com barra","Quadríceps","squat","g",0,"Pés bem abertos, pontas para fora|Joelhos abrem junto com os pés|Tronco ereto até a coxa paralela","",1],
+["Agachamento sumô com halter","Glúteos","squat","d",0,"Pés bem abertos, pontas para fora|Halter seguro entre as pernas|Desça com tronco ereto e joelhos abertos","",1],
+["Agachamento com halteres","Quadríceps","squat","d",0,"Halteres ao lado do corpo|Desça até a coxa paralela|Tronco firme, joelhos seguem os pés","",1],
+["Leg press pés juntos","Quadríceps","squat","g",0,"Pés mais próximos no meio da plataforma|Desça até 90° sem tirar o quadril|Empurre sem travar os joelhos","joelhos",1],
+["Leg press horizontal","Quadríceps","squat","g",0,"Costas apoiadas, pés na plataforma|Desça até 90° nos joelhos|Empurre sem travar os joelhos","",1],
+["Afundo com barra","Quadríceps","quad","g",0,"Barra no trapézio, passo largo|Os dois joelhos a 90° embaixo|Joelho da frente alinhado ao pé","joelhos",1],
+["Passada com barra","Quadríceps","quad","g",0,"Passos largos e controlados|Joelho de trás quase no chão|Tronco ereto o tempo todo","joelhos",1],
+["Passada com halteres","Quadríceps","quad","d",0,"Halteres ao lado do corpo|Passo largo, os dois joelhos a 90°|Tronco ereto, empurre com a perna da frente","joelhos",1],
+["Afundo reverso com halteres","Glúteos","quad","d",0,"Dê o passo para trás|Desça até o joelho de trás quase no chão|Suba empurrando com a perna da frente","",1],
+["Subida no banco com barra","Quadríceps","quad","g",0,"Pé inteiro apoiado no banco|Suba empurrando com a perna de cima|Desça controlando","",1],
+["Cadeira extensora unilateral","Quadríceps","quad","g",0,"Joelho alinhado ao eixo da máquina|Estenda a perna até quase travar|Desça devagar","joelhos",1],
+["Sissy squat","Quadríceps","quad","c",0,"Segure em um apoio para equilíbrio|Leve os joelhos à frente e o tronco para trás|Desça só até onde controlar","joelhos",1],
+["Cadeira adutora","Quadríceps","glute","g",0,"Costas apoiadas no encosto|Feche as pernas contraindo a parte interna da coxa|Abra devagar sem soltar a carga","",1],
+["Cadeira abdutora","Glúteos","glute","g",0,"Costas apoiadas no encosto|Abra as pernas contraindo o glúteo|Volte devagar sem bater os pesos","",1],
+["Ponte de glúteo com barra","Glúteos","glute","g",0,"Barra sobre o quadril, costas no chão|Suba o quadril até alinhar com as coxas|Contraia o glúteo no topo","",1],
+["Coice de glúteo","Glúteos","glute","c",0,"Quatro apoios, coluna neutra|Leve a perna para trás e para cima|Sem arquear a lombar","",1],
+["Coice na polia","Glúteos","glute","g",0,"Tornozeleira presa na polia baixa|Leve a perna para trás contraindo o glúteo|Tronco firme, sem arquear","",1],
+["Caminhada lateral com elástico","Glúteos","glute","e",1,"Elástico acima dos joelhos ou tornozelos|Semi-agachado, passos laterais curtos|Mantenha o elástico tenso o tempo todo","",1],
+["Ponte com elástico","Glúteos","glute","e",0,"Elástico acima dos joelhos|Suba o quadril abrindo os joelhos contra o elástico|Contraia o glúteo no topo","",1],
+["Panturrilha sentado","Panturrilha","calf","g",0,"Apoio sobre os joelhos|Desça o calcanhar até alongar|Suba o máximo e segure 1s","",1],
+["Panturrilha no leg press","Panturrilha","calf","g",0,"Ponta dos pés na borda da plataforma|Joelhos quase retos e fixos|Empurre com a ponta dos pés e volte devagar","",1],
+["Panturrilha no Smith","Panturrilha","calf","g",0,"Ponta dos pés sobre um degrau|Desça o calcanhar até alongar|Suba o máximo e segure 1s","",1],
+["Panturrilha burrinho","Panturrilha","calf","g",0,"Tronco inclinado à frente, quadril sob a carga|Desça o calcanhar até alongar|Suba na ponta dos pés","",1],
+["Desenvolvimento com barra","Ombros","vpush","g",0,"Barra na altura do queixo|Empurre até acima da cabeça|Abdômen firme, sem arquear a lombar","ombros",1],
+["Desenvolvimento militar em pé","Ombros","vpush","g",0,"Glúteo e abdômen contraídos|Barra sobe passando rente ao rosto|Termine com a barra sobre a cabeça","ombros",1],
+["Desenvolvimento Arnold","Ombros","vpush","d",0,"Comece com as palmas viradas para você|Gire as mãos enquanto empurra para cima|Desça girando de volta","ombros",1],
+["Desenvolvimento no Smith","Ombros","vpush","g",0,"Banco com encosto alto|Barra desce até a altura do queixo|Empurre sem travar os cotovelos","ombros",1],
+["Desenvolvimento na polia","Ombros","vpush","g",0,"Sentado entre as polias|Mãos na altura das orelhas|Empurre para cima sem arquear","",1],
+["Elevação frontal com halteres","Ombros","lat","d",0,"Cotovelos levemente dobrados|Suba até a altura dos ombros|Desça devagar sem balançar","",1],
+["Elevação frontal com anilha","Ombros","lat","g",0,"Anilha segura pelas laterais|Suba até a altura dos olhos|Desça devagar sem balançar","",1],
+["Elevação frontal na polia","Ombros","lat","g",0,"De costas para a polia baixa|Suba até a altura dos ombros|Tronco firme, sem balançar","",1],
+["Elevação lateral sentado","Ombros","lat","d",0,"Sentado com coluna alta|Suba os braços até a altura dos ombros|Cotovelos levemente dobrados","",1],
+["Elevação lateral inclinada","Ombros","lat","d",0,"Deitado de lado no banco inclinado|Suba o braço até a linha do ombro|Desça devagar","",1],
+["Remada alta com barra","Ombros","lat","g",0,"Pegada um pouco mais aberta que os ombros|Puxe até a altura do peito|Cotovelos acima das mãos","ombros",1],
+["Crucifixo inverso na polia","Ombros","rear","g",1,"Polias cruzadas na altura dos ombros|Abra os braços para trás|Aperte o ombro de trás no fim","",1],
+["Crucifixo inverso na máquina","Ombros","rear","g",1,"Peito apoiado no encosto|Abra os braços para trás na altura dos ombros|Volte devagar sem soltar a carga","",1],
+["Crucifixo inverso sentado","Ombros","rear","d",1,"Sentado com o tronco inclinado à frente|Abra os braços para os lados|Aperte as escápulas no topo","",1],
+["Rotação externa na polia","Ombros","rear","g",1,"Cotovelo colado ao corpo a 90°|Gire o antebraço para fora|Movimento lento e controlado","",1],
+["Encolhimento com barra","Costas","rear","g",0,"Braços estendidos segurando a barra|Suba os ombros em direção às orelhas|Segure 1s e desça devagar","",1],
+["Encolhimento com halteres","Costas","rear","d",0,"Halteres ao lado do corpo|Suba os ombros em direção às orelhas|Sem girar os ombros","",1],
+["Rosca com barra W","Bíceps","bi","g",0,"Cotovelos colados ao corpo|Suba a barra sem balançar o tronco|Desça até quase esticar","",1],
+["Rosca Scott","Bíceps","bi","g",0,"Braços apoiados no banco Scott|Suba a barra até contrair o bíceps|Desça devagar sem travar o cotovelo","",1],
+["Rosca Scott na máquina","Bíceps","bi","g",0,"Axilas encostadas no apoio|Suba contraindo o bíceps|Desça devagar","",1],
+["Rosca concentrada","Bíceps","bi","d",0,"Cotovelo apoiado na parte interna da coxa|Suba o halter até o ombro|Desça devagar sem mexer o braço","",1],
+["Rosca inclinada com halteres","Bíceps","bi","d",0,"Costas no banco inclinado|Braços pendurados para trás|Suba sem tirar os cotovelos do lugar","",1],
+["Rosca na polia","Bíceps","bi","g",0,"Cotovelos colados ao corpo|Suba a barra até o peito|Desça devagar sem soltar a carga","",1],
+["Rosca martelo na corda","Bíceps","bi","g",0,"Corda na polia baixa, palmas viradas uma para a outra|Cotovelos colados ao corpo|Suba até o peito e desça devagar","",1],
+["Rosca inversa","Bíceps","bi","g",0,"Palmas viradas para baixo|Cotovelos colados ao corpo|Suba sem dobrar os punhos","",1],
+["Rosca Zottman","Bíceps","bi","d",0,"Suba com as palmas para cima|Gire as palmas para baixo no topo|Desça devagar com as palmas para baixo","",1],
+["Rosca spider","Bíceps","bi","g",0,"Peito apoiado no banco inclinado|Braços pendurados na vertical|Suba contraindo o bíceps no topo","",1],
+["Tríceps testa","Tríceps","tri","g",0,"Cotovelos apontando para o teto|Desça a barra até a testa|Estenda sem abrir os cotovelos","",1],
+["Supino fechado","Tríceps","tri","g",0,"Mãos na largura dos ombros|Cotovelos rentes ao corpo|Barra desce na parte baixa do peito","ombros",1],
+["Tríceps francês na polia","Tríceps","tri","g",0,"De costas para a polia, corda atrás da cabeça|Cotovelos apontando para frente|Estenda os braços à frente da cabeça","",1],
+["Tríceps coice","Tríceps","tri","d",0,"Tronco inclinado, braço colado ao corpo|Estenda o cotovelo para trás|Só o antebraço se mexe","",1],
+["Tríceps pulley inverso","Tríceps","tri","g",0,"Palmas viradas para cima|Cotovelos colados ao corpo|Estenda até esticar os braços","",1],
+["Tríceps pulley com triângulo","Tríceps","tri","g",0,"Cotovelos colados ao corpo|Empurre até esticar os braços|Volte devagar até 90°","",1],
+["Paralelas (tríceps)","Tríceps","tri","c",0,"Tronco ereto|Desça até os cotovelos a 90°|Suba empurrando sem travar","ombros",1],
+["Paralelas na máquina","Tríceps","tri","g",0,"Costas apoiadas no encosto|Empurre para baixo até esticar os braços|Volte devagar até 90°","",1],
+["Flexão diamante","Tríceps","tri","c",0,"Mãos juntas formando um diamante|Cotovelos rentes ao corpo|Corpo em linha reta","",1],
+["Tríceps unilateral na polia","Tríceps","tri","g",0,"Um braço por vez, cotovelo colado ao corpo|Estenda até esticar o braço|Volte devagar","",1],
+["Elevação de pernas na barra","Core","core","c",0,"Pendurado na barra, corpo parado|Suba as pernas até a linha do quadril|Desça devagar sem balançar","",1],
+["Elevação de joelhos no apoio","Core","core","c",0,"Antebraços apoiados, costas no encosto|Suba os joelhos até o peito|Desça devagar","",1],
+["Abdominal supra","Core","core","c",0,"Joelhos dobrados, pés no chão|Suba o tronco tirando as escápulas do chão|Expire ao subir","",1],
+["Abdominal infra","Core","core","c",0,"Deitado, joelhos dobrados no alto|Suba o quadril em direção ao peito|Desça devagar sem balançar","",1],
+["Roda abdominal","Core","core","c",0,"Ajoelhado segurando a roda|Role à frente mantendo a lombar neutra|Volte contraindo o abdômen","lombar",1],
+["Abdominal na máquina","Core","core","g",0,"Costas no encosto, pés presos|Enrole o tronco à frente|Volte devagar sem soltar a carga","",1],
+["Abdominal russo","Core","corelat","c",0,"Sentado, tronco inclinado para trás|Gire o tronco de um lado para o outro|Coluna alta, sem curvar","lombar",1],
+["Abdominal oblíquo","Core","corelat","c",0,"Deitado de lado, joelhos dobrados|Suba o tronco de lado|Expire ao subir","",1],
+["Lenhador na polia","Core","corelat","g",0,"De lado para a polia alta|Puxe na diagonal até o quadril oposto|Gire o tronco, braços quase retos","",1],
+["Flexão lateral com halter","Core","corelat","d",0,"Halter em uma mão, em pé|Incline o tronco para o lado do peso|Suba usando o oblíquo do outro lado","",1],
+["Transport (elíptico)","Cardio","cardio","g",0,"Postura alta, sem curvar|Empurre com as pernas e os braços juntos|Ritmo constante","",1],
+["Remo ergômetro","Cardio","cardio","g",0,"Empurre com as pernas primeiro|Depois puxe com os braços até o peito|Volte na ordem inversa","",1],
+["Escada (simulador)","Cardio","cardio","g",0,"Pé inteiro no degrau|Não se apoie demais no corrimão|Ritmo constante","",1],
+["Pular corda","Cardio","cardio","c",0,"Salto baixo na ponta dos pés|Gire a corda com os punhos|Ritmo constante","",1],
+["Bicicleta horizontal","Cardio","cardio","g",0,"Costas apoiadas no encosto|Banco ajustado para o joelho quase esticar|Ritmo constante","",1],
+["Corrida na esteira","Cardio","cardio","g",0,"Passada curta e leve|Olhar à frente, ombros soltos|Não segure no corrimão","",1]
 ];
-const LIB = RAW.map(([name, group, pattern, equip, p, cues, avoid]) => ({name, group, pattern, equip, postural: !!p, cues: cues.split("|"), avoid: avoid ? avoid.split(",") : []}));
+const LIB = RAW.map(([name, group, pattern, equip, p, cues, avoid, extra]) => ({name, group, pattern, equip, postural: !!p, cues: cues.split("|"), avoid: avoid ? avoid.split(",") : [], extra: !!extra}));
 const GROUPS = [...new Set(LIB.map(x => x.group))];
 const byName = n => {
   const q = String(n || "").trim().toLowerCase(); if (!q) return undefined;
@@ -1212,7 +1347,7 @@ function splitFor(p) {
 }
 function candidates(pattern, p, ignorePain) {
   const codes = (EQUIP[p.equip] || EQUIP.academia).codes;
-  const c = LIB.filter(x => x.pattern === pattern && codes.includes(x.equip)).sort((a, b) => codes.indexOf(a.equip) - codes.indexOf(b.equip));
+  const c = LIB.filter(x => x.pattern === pattern && codes.includes(x.equip) && (ignorePain || !x.extra)).sort((a, b) => codes.indexOf(a.equip) - codes.indexOf(b.equip));
   if (ignorePain) return c;
   const ps = pains(p);
   const safe = c.filter(x => !x.avoid.some(a => ps.includes(a)));
@@ -1442,7 +1577,7 @@ function subMedia(db) {
   } catch {}
 }
 /* Fotos reais (Free Exercise DB, domínio público): início e fim do movimento alternando. */
-const EXPH = {"Supino reto com barra": "supino-reto-com-barra", "Supino reto com halteres": "supino-reto-com-halteres", "Flexão de braço": "flexao-de-braco", "Supino com elástico": "supino-com-elastico", "Supino inclinado com barra": "supino-inclinado-com-barra", "Supino inclinado com halteres": "supino-inclinado-com-halteres", "Flexão inclinada": "flexao-inclinada", "Crossover na polia": "crossover-na-polia", "Peck deck": "peck-deck", "Crucifixo com halteres": "crucifixo-com-halteres", "Puxada frontal": "puxada-frontal", "Barra fixa": "barra-fixa", "Puxada alta com elástico": "puxada-alta-com-elastico", "Remada baixa no cabo": "remada-baixa-no-cabo", "Remada curvada com barra": "remada-curvada-com-barra", "Remada unilateral com halter": "remada-unilateral-com-halter", "Remada com elástico": "remada-com-elastico", "Remada invertida": "remada-invertida", "Desenvolvimento máquina": "desenvolvimento-maquina", "Desenvolvimento com halteres": "desenvolvimento-com-halteres", "Desenvolvimento com elástico": "desenvolvimento-com-elastico", "Elevação lateral na polia": "elevacao-lateral-na-polia", "Elevação lateral": "elevacao-lateral", "Elevação lateral com elástico": "elevacao-lateral-com-elastico", "Face pull": "face-pull", "Crucifixo inverso com halteres": "crucifixo-inverso-com-halteres", "Band pull-apart": "band-pull-apart", "Rosca direta com barra": "rosca-direta-com-barra", "Rosca alternada": "rosca-alternada", "Rosca martelo": "rosca-martelo", "Rosca com elástico": "rosca-com-elastico", "Tríceps corda": "triceps-corda", "Tríceps pulley": "triceps-pulley", "Tríceps francês com halter": "triceps-frances-com-halter", "Tríceps com elástico": "triceps-com-elastico", "Tríceps banco": "triceps-banco", "Agachamento livre": "agachamento-livre", "Leg press 45°": "leg-press-45", "Agachamento goblet": "agachamento-goblet", "Agachamento com elástico": "agachamento-com-elastico", "Agachamento livre sem peso": "agachamento-livre-sem-peso", "Cadeira extensora": "cadeira-extensora", "Agachamento búlgaro": "agachamento-bulgaro", "Afundo alternado": "afundo-alternado", "Step-up no banco": "step-up-no-banco", "Levantamento terra romeno": "levantamento-terra-romeno", "Stiff com halteres": "stiff-com-halteres", "Good morning com elástico": "good-morning-com-elastico", "Elevação pélvica unilateral": "elevacao-pelvica-unilateral", "Mesa flexora": "mesa-flexora", "Flexora com elástico": "flexora-com-elastico", "Elevação pélvica": "elevacao-pelvica", "Elevação pélvica com halter": "elevacao-pelvica-com-halter", "Ponte de glúteo": "ponte-de-gluteo", "Panturrilha em pé": "panturrilha-em-pe", "Panturrilha no degrau": "panturrilha-no-degrau", "Abdominal na polia": "abdominal-na-polia", "Dead bug": "dead-bug", "Prancha": "prancha", "Pallof press": "pallof-press", "Prancha lateral": "prancha-lateral", "Gato-camelo": "gato-camelo", "Rotação externa com elástico": "rotacao-externa-com-elastico", "Alongamento de flexor do quadril": "alongamento-de-flexor-do-quadril", "Bicicleta ergométrica": "bicicleta-ergometrica", "Esteira inclinada": "esteira-inclinada", "Polichinelo": "polichinelo"};
+const EXPH = {"Supino reto com barra": "supino-reto-com-barra", "Supino reto com halteres": "supino-reto-com-halteres", "Flexão de braço": "flexao-de-braco", "Supino com elástico": "supino-com-elastico", "Supino inclinado com barra": "supino-inclinado-com-barra", "Supino inclinado com halteres": "supino-inclinado-com-halteres", "Flexão inclinada": "flexao-inclinada", "Crossover na polia": "crossover-na-polia", "Peck deck": "peck-deck", "Crucifixo com halteres": "crucifixo-com-halteres", "Puxada frontal": "puxada-frontal", "Barra fixa": "barra-fixa", "Puxada alta com elástico": "puxada-alta-com-elastico", "Remada baixa no cabo": "remada-baixa-no-cabo", "Remada curvada com barra": "remada-curvada-com-barra", "Remada unilateral com halter": "remada-unilateral-com-halter", "Remada com elástico": "remada-com-elastico", "Remada invertida": "remada-invertida", "Desenvolvimento máquina": "desenvolvimento-maquina", "Desenvolvimento com halteres": "desenvolvimento-com-halteres", "Desenvolvimento com elástico": "desenvolvimento-com-elastico", "Elevação lateral na polia": "elevacao-lateral-na-polia", "Elevação lateral": "elevacao-lateral", "Elevação lateral com elástico": "elevacao-lateral-com-elastico", "Face pull": "face-pull", "Crucifixo inverso com halteres": "crucifixo-inverso-com-halteres", "Band pull-apart": "band-pull-apart", "Rosca direta com barra": "rosca-direta-com-barra", "Rosca alternada": "rosca-alternada", "Rosca martelo": "rosca-martelo", "Rosca com elástico": "rosca-com-elastico", "Tríceps corda": "triceps-corda", "Tríceps pulley": "triceps-pulley", "Tríceps francês com halter": "triceps-frances-com-halter", "Tríceps com elástico": "triceps-com-elastico", "Tríceps banco": "triceps-banco", "Agachamento livre": "agachamento-livre", "Leg press 45°": "leg-press-45", "Agachamento goblet": "agachamento-goblet", "Agachamento com elástico": "agachamento-com-elastico", "Agachamento livre sem peso": "agachamento-livre-sem-peso", "Cadeira extensora": "cadeira-extensora", "Agachamento búlgaro": "agachamento-bulgaro", "Afundo alternado": "afundo-alternado", "Step-up no banco": "step-up-no-banco", "Levantamento terra romeno": "levantamento-terra-romeno", "Stiff com halteres": "stiff-com-halteres", "Good morning com elástico": "good-morning-com-elastico", "Elevação pélvica unilateral": "elevacao-pelvica-unilateral", "Mesa flexora": "mesa-flexora", "Flexora com elástico": "flexora-com-elastico", "Elevação pélvica": "elevacao-pelvica", "Elevação pélvica com halter": "elevacao-pelvica-com-halter", "Ponte de glúteo": "ponte-de-gluteo", "Panturrilha em pé": "panturrilha-em-pe", "Panturrilha no degrau": "panturrilha-no-degrau", "Abdominal na polia": "abdominal-na-polia", "Dead bug": "dead-bug", "Prancha": "prancha", "Pallof press": "pallof-press", "Prancha lateral": "prancha-lateral", "Gato-camelo": "gato-camelo", "Rotação externa com elástico": "rotacao-externa-com-elastico", "Alongamento de flexor do quadril": "alongamento-de-flexor-do-quadril", "Bicicleta ergométrica": "bicicleta-ergometrica", "Esteira inclinada": "esteira-inclinada", "Polichinelo": "polichinelo", "Supino declinado com barra": "supino-declinado-com-barra", "Supino declinado com halteres": "supino-declinado-com-halteres", "Supino máquina": "supino-maquina", "Supino articulado": "supino-articulado", "Supino inclinado articulado": "supino-inclinado-articulado", "Supino reto no Smith": "supino-reto-no-smith", "Supino inclinado no Smith": "supino-inclinado-no-smith", "Supino inclinado pegada neutra": "supino-inclinado-pegada-neutra", "Supino reto pegada neutra": "supino-reto-pegada-neutra", "Crucifixo inclinado com halteres": "crucifixo-inclinado-com-halteres", "Crucifixo declinado com halteres": "crucifixo-declinado-com-halteres", "Crucifixo na polia": "crucifixo-na-polia", "Crucifixo inclinado na polia": "crucifixo-inclinado-na-polia", "Crossover polia baixa": "crossover-polia-baixa", "Crossover unilateral": "crossover-unilateral", "Crucifixo com elástico": "crucifixo-com-elastico", "Supino em pé na polia": "supino-em-pe-na-polia", "Supino inclinado na polia": "supino-inclinado-na-polia", "Paralelas (peito)": "paralelas-peito", "Flexão aberta": "flexao-aberta", "Flexão declinada": "flexao-declinada", "Pullover com halter": "pullover-com-halter", "Puxada fechada": "puxada-fechada", "Puxada triângulo": "puxada-triangulo", "Puxada supinada": "puxada-supinada", "Puxada unilateral": "puxada-unilateral", "Pulldown braços estendidos": "pulldown-bracos-estendidos", "Pulldown com corda": "pulldown-com-corda", "Barra fixa supinada": "barra-fixa-supinada", "Barra fixa com elástico": "barra-fixa-com-elastico", "Barra fixa com carga": "barra-fixa-com-carga", "Remada curvada com halteres": "remada-curvada-com-halteres", "Remada cavalinho": "remada-cavalinho", "Remada cavalinho apoiado": "remada-cavalinho-apoiado", "Remada unilateral na polia": "remada-unilateral-na-polia", "Remada apoiada no banco inclinado": "remada-apoiada-no-banco-inclinado", "Remada curvada no Smith": "remada-curvada-no-smith", "Remada curvada supinada": "remada-curvada-supinada", "Remada alta articulada": "remada-alta-articulada", "Remada articulada": "remada-articulada", "Remada no TRX": "remada-no-trx", "Hiperextensão lombar": "hiperextensao-lombar", "Levantamento terra": "levantamento-terra", "Terra sumô": "terra-sumo", "Levantamento terra com barra hexagonal": "levantamento-terra-com-barra-hexagonal", "Stiff com barra": "stiff-com-barra", "Good morning com barra": "good-morning-com-barra", "Pull through na polia": "pull-through-na-polia", "Cadeira flexora": "cadeira-flexora", "Flexora em pé": "flexora-em-pe", "Glute ham raise": "glute-ham-raise", "Stiff unilateral": "stiff-unilateral", "Kettlebell swing": "kettlebell-swing", "Agachamento livre profundo": "agachamento-livre-profundo", "Agachamento frontal": "agachamento-frontal", "Agachamento hack": "agachamento-hack", "Agachamento no Smith": "agachamento-no-smith", "Agachamento no banco": "agachamento-no-banco", "Agachamento sumô com barra": "agachamento-sumo-com-barra", "Agachamento sumô com halter": "agachamento-sumo-com-halter", "Agachamento com halteres": "agachamento-com-halteres", "Leg press pés juntos": "leg-press-pes-juntos", "Leg press horizontal": "leg-press-horizontal", "Afundo com barra": "afundo-com-barra", "Passada com barra": "passada-com-barra", "Passada com halteres": "passada-com-halteres", "Afundo reverso com halteres": "afundo-reverso-com-halteres", "Subida no banco com barra": "subida-no-banco-com-barra", "Cadeira extensora unilateral": "cadeira-extensora-unilateral", "Sissy squat": "sissy-squat", "Cadeira adutora": "cadeira-adutora", "Cadeira abdutora": "cadeira-abdutora", "Ponte de glúteo com barra": "ponte-de-gluteo-com-barra", "Coice de glúteo": "coice-de-gluteo", "Coice na polia": "coice-na-polia", "Caminhada lateral com elástico": "caminhada-lateral-com-elastico", "Ponte com elástico": "ponte-com-elastico", "Panturrilha sentado": "panturrilha-sentado", "Panturrilha no leg press": "panturrilha-no-leg-press", "Panturrilha no Smith": "panturrilha-no-smith", "Panturrilha burrinho": "panturrilha-burrinho", "Desenvolvimento com barra": "desenvolvimento-com-barra", "Desenvolvimento militar em pé": "desenvolvimento-militar-em-pe", "Desenvolvimento Arnold": "desenvolvimento-arnold", "Desenvolvimento no Smith": "desenvolvimento-no-smith", "Desenvolvimento na polia": "desenvolvimento-na-polia", "Elevação frontal com halteres": "elevacao-frontal-com-halteres", "Elevação frontal com anilha": "elevacao-frontal-com-anilha", "Elevação frontal na polia": "elevacao-frontal-na-polia", "Elevação lateral sentado": "elevacao-lateral-sentado", "Elevação lateral inclinada": "elevacao-lateral-inclinada", "Remada alta com barra": "remada-alta-com-barra", "Crucifixo inverso na polia": "crucifixo-inverso-na-polia", "Crucifixo inverso na máquina": "crucifixo-inverso-na-maquina", "Crucifixo inverso sentado": "crucifixo-inverso-sentado", "Rotação externa na polia": "rotacao-externa-na-polia", "Encolhimento com barra": "encolhimento-com-barra", "Encolhimento com halteres": "encolhimento-com-halteres", "Rosca com barra W": "rosca-com-barra-w", "Rosca Scott": "rosca-scott", "Rosca Scott na máquina": "rosca-scott-na-maquina", "Rosca concentrada": "rosca-concentrada", "Rosca inclinada com halteres": "rosca-inclinada-com-halteres", "Rosca na polia": "rosca-na-polia", "Rosca martelo na corda": "rosca-martelo-na-corda", "Rosca inversa": "rosca-inversa", "Rosca Zottman": "rosca-zottman", "Rosca spider": "rosca-spider", "Tríceps testa": "triceps-testa", "Supino fechado": "supino-fechado", "Tríceps francês na polia": "triceps-frances-na-polia", "Tríceps coice": "triceps-coice", "Tríceps pulley inverso": "triceps-pulley-inverso", "Tríceps pulley com triângulo": "triceps-pulley-com-triangulo", "Paralelas (tríceps)": "paralelas-triceps", "Paralelas na máquina": "paralelas-na-maquina", "Flexão diamante": "flexao-diamante", "Tríceps unilateral na polia": "triceps-unilateral-na-polia", "Elevação de pernas na barra": "elevacao-de-pernas-na-barra", "Elevação de joelhos no apoio": "elevacao-de-joelhos-no-apoio", "Abdominal supra": "abdominal-supra", "Abdominal infra": "abdominal-infra", "Roda abdominal": "roda-abdominal", "Abdominal na máquina": "abdominal-na-maquina", "Abdominal russo": "abdominal-russo", "Abdominal oblíquo": "abdominal-obliquo", "Lenhador na polia": "lenhador-na-polia", "Flexão lateral com halter": "flexao-lateral-com-halter", "Transport (elíptico)": "transport-eliptico", "Remo ergômetro": "remo-ergometro", "Escada (simulador)": "escada-simulador", "Pular corda": "pular-corda", "Bicicleta horizontal": "bicicleta-horizontal", "Corrida na esteira": "corrida-na-esteira"};
 const EXV = {"Flexão pike": "flexao-pike"};
 function demoBox(name, group, live) {
   const L = byName(name), nm = L ? L.name : name, gr = L ? L.group : group;
@@ -2488,9 +2623,9 @@ function openPicker(mode, keep) {
   renderPickList();
 }
 function renderPickList() {
-  const q = pk.q.trim().toLowerCase();
+  const q = pk.q.trim().toLowerCase(), fold = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(), qf = fold(q);
   const codes = pk.eq ? EQUIP[pk.eq].codes : "gdec";
-  const items = LIB.filter(x => (!pk.g || x.group === pk.g) && codes.includes(x.equip) && (!pk.post || x.postural) && (!q || x.name.toLowerCase().includes(q)));
+  const items = LIB.filter(x => (!pk.g || x.group === pk.g) && codes.includes(x.equip) && (!pk.post || x.postural) && (!q || fold(x.name).includes(qf)));
   const act = pk.mode === "browse" ? "" : pk.mode === "swap" ? "swapTo" : pk.mode === "live" ? "addLiveEx" : "addEx";
   const custom = q && (act === "addEx" || act === "addLiveEx") && !LIB.some(x => x.name.toLowerCase() === q)
     ? `<div class="li"><span></span><div class="li-main"><b>${esc(pk.q.trim())}</b><span class="li-tags">Exercício próprio</span></div><button class="li-add" data-a="${act}" data-c="1" data-n="${esc(pk.q.trim())}" aria-label="Adicionar">+</button></div>` : "";
@@ -3342,7 +3477,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261118190128";</script>
+<script>window.SL_VERSION = "20261118190843";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
