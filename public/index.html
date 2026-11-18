@@ -303,6 +303,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(51,191,24
 .sets{display:flex;flex-direction:column;gap:7px}
 .sets-h,.srow{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(0,1fr) 50px;gap:10px;align-items:center}
 .sets-h span{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);text-align:center}
+.addlive{margin:4px 0 12px;padding:14px;border:1px dashed var(--line-2);background:transparent;color:var(--cer-hi);font-weight:600}
+.srow .tin{position:relative;display:block;min-width:0}
+.srow .tin input{width:100%}
+.srow .tin.t::after{content:attr(data-u);position:absolute;right:10px;top:50%;transform:translateY(-50%);font:500 11px var(--f-mono);color:var(--muted);pointer-events:none}
+.srow.run .tin input{border-color:var(--rose);color:#fff;box-shadow:0 0 0 3px rgba(255,45,149,.18),0 0 18px rgba(255,45,149,.25)}
+.srow.run .tin input.pre{color:var(--cer-hi);border-color:var(--cer)}
+.srow.run .tin.t::after{content:""}
+.chk.tm{color:var(--cer-hi);border-color:rgba(51,191,240,.55);font-size:15px}
+.srow.run .chk.tm{color:#fff;background:var(--rose);border-color:transparent;animation:pulse 1.2s ease-in-out infinite}
 .srow .sl{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:center}
 .srow input{font-family:var(--f-mono);font-size:18px;font-weight:500;text-align:center;padding:10px 4px;font-variant-numeric:tabular-nums}
 .chk{width:46px;height:46px;justify-self:center;border-radius:50%;border:1px solid var(--line-2);background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.14),rgba(255,255,255,.03));color:var(--dim);font-size:18px;font-weight:700;transition:all .2s}
@@ -1553,17 +1562,90 @@ function beep() {
 }
 /* Notificação no celular quando o descanso entra nos últimos segundos */
 const canNotify = () => "Notification" in window;
-const REST_SOON = ["Levanta daí, o shape não vai se montar sozinho.", "3, 2, 1… o descanso tá acabando, campeão.", "Respira fundo: a próxima série já tá te chamando.",
-  "O banco tá ficando confortável demais. Bora!", "Hidratou? Então larga a garrafinha que a série não espera.", "Últimos segundos de paz. Aproveita."];
 const REST_DONE = ["Acabou o recreio! Volta pra série.", "Descanso encerrado. O peso tá com saudade de você.", "Fim do intervalo. O experimento continua no laboratório.",
   "Se o celular tá na sua mão, o halter não tá. Bora!", "Tempo esgotado. Os músculos pediram mais uma dose.", "Chega de rolar o feed, a série te espera.",
-  "O descanso acabou, mas a desculpa você ainda pode guardar pra amanhã.", "Bora que o shape não vem por delivery."];
+  "O descanso acabou, mas a desculpa você pode guardar pra amanhã.", "Bora que o shape não vem por delivery.", "Larga o zap, pega o peso.",
+  "Intervalo comercial encerrado. Voltamos com a programação.", "Seu músculo mandou mensagem: “cadê você?”", "Recreio acabou, o sinal bateu.",
+  "Shape em construção. Favor retornar à obra.", "O suor não vai sair sozinho. Bora!", "Descansou? Então cansa de novo."];
+const MSG_GROUP = {
+  "Peito": ["Peito estufado é peito treinado. Volta pro banco!", "Bora deixar a camiseta apertada no peito.", "Peito de aço não vem de fábrica.", "Coração no lugar, peitoral na missão.", "Empurra que o peitoral agradece.", "Peitoral chamando, e não é pra papo."],
+  "Costas": ["Costas largas não aparecem por acaso. Puxa!", "Quem tem costas tem tudo. Próxima série.", "Bora abrir essas asas.", "O que fica pra trás também conta. Volta!", "Vai virar guarda-roupa de costas. Bora.", "Puxa a série como quem puxa um assunto bom."],
+  "Ombros": ["Ombro 3D não se imprime sozinho.", "Deltoide chamando, atende.", "Ombros pra cima, desculpas pra baixo.", "A regata do verão tá contando com você.", "Bora carregar o mundo nos ombros.", "Ombro largo, porta estreita. Bora!"],
+  "Bíceps": ["Bíceps não cresce olhando o celular.", "Bora pro show do braço.", "Muque se faz série a série.", "Manga apertando? Ainda não. Volta!", "Flexiona o braço, não a meta.", "Bora fazer o braço pedir manga maior."],
+  "Tríceps": ["Dois terços do braço é tríceps. Respeita!", "Tríceps pediu bis.", "Estica que o braço agradece.", "Bora fazer a parte de trás do braço aparecer.", "Tchau, tchauzinho do braço. Só tríceps aqui."],
+  "Quadríceps": ["Não pula o dia de perna, nem a série.", "Coxa de respeito é construída agachando.", "Agacha que a vida levanta.", "A perna treme, mas não desiste.", "Perna forte, escada vencida. Bora!", "Leg day não tem atalho."],
+  "Posterior": ["Posterior forte, lombar feliz.", "Bora dobrar o quadril e bater a meta.", "Atrás da coxa também é gente. Bora!", "Isquiotibiais chamando, atende.", "Quadril pra trás, preguiça pra fora."],
+  "Glúteos": ["Glúteo não se constrói sentado. Levanta!", "Bora empinar essa meta.", "Essa série vai direto pro bumbum.", "Contrai lá em cima e segura o orgulho.", "Glúteo na ativa, calça agradece."],
+  "Panturrilha": ["Panturrilha é teimosa, você é mais.", "Sobe na ponta e não desce do salto.", "Batata da perna pedindo tempero.", "Panturrilha só cresce com insistência. Insiste!"],
+  "Core": ["Tanquinho se lava série a série.", "Barriga pra dentro, preguiça pra fora.", "Core firme, papo reto.", "Abdômen trincado começa aqui.", "Centro do corpo, centro das atenções."],
+  "Mobilidade": ["Solta o corpo, prende a meta.", "Articulação lubrificada é articulação feliz.", "Mobilidade hoje, sem dor amanhã.", "Destrava aí, robozinho.", "Alonga o corpo, encurta a desculpa."],
+  "Cardio": ["Coração acelerado é sinal de vida. Bora!", "Suar é o corpo comemorando.", "Respira e vai.", "Cardio: o melhor app de meditação suada."]
+};
+const MSG_EX = [
+  [/^Supino/, ["Supino chamando: deita que é sucesso.", "O banco tá livre? Vai antes que alguém pegue.", "Barra no peito, meta no topo.", "Segunda-feira mundial do supino? Todo dia é dia."]],
+  [/^Agachamento/, ["Agachamento: o rei dos exercícios te aguarda.", "Desce até o fundo, sobe até o topo.", "Senta na cadeira invisível e levanta campeão."]],
+  [/^Leg press/, ["Leg press: empurra o mundo com as pernas.", "Põe peso que a perna aguenta.", "Empurra a plataforma, não a responsabilidade."]],
+  [/Levantamento terra|Stiff/, ["Dobra o quadril, não a coluna.", "Coluna reta, ego alto.", "Puxa do chão como quem levanta a autoestima."]],
+  [/Good morning|Bom dia/, ["Bom dia! Literalmente.", "Bom dia pro posterior, boa noite pra preguiça."]],
+  [/^Barra fixa/, ["Queixo acima da barra, ego acima da média.", "Se pendura que a série é tua.", "Sobe na barra como quem sobe na vida."]],
+  [/^Puxada/, ["Puxa a barra até o peito e a autoestima até o teto.", "Puxada: abre as asas e voa."]],
+  [/^Remada/, ["Rema que esse barco é teu.", "Bora remar contra a maré da preguiça.", "Remada boa é remada com escápula."]],
+  [/^Rosca/, ["Rosca vem, rosca vai, o bíceps só sobe.", "Bora fazer a rosca mais famosa da academia.", "Rosca direta, sem enrolação."]],
+  [/Elevação pélvica|^Ponte/, ["Quadril pra cima, astral também.", "Sobe esse quadril que a ponte não cai.", "Ponte construída, glúteo inaugurado."]],
+  [/búlgaro/, ["Búlgaro: odiado por todos, necessário pra todos.", "Respira fundo. É búlgaro."]],
+  [/^Afundo|Step-up/, ["Uma perna por vez, uma vitória por vez.", "Dá um passo à frente. Literalmente."]],
+  [/^Flexão/, ["Peito no chão, cabeça erguida.", "Desce e sobe, igual bolsa de valores, só que sempre no lucro."]],
+  [/Elevação lateral/, ["Abre os braços como quem comemora gol.", "Asas abertas, ombro largo."]],
+  [/Face pull|Crucifixo inverso|pull-apart|Y-T-W/, ["Postura de rei começa no ombro de trás.", "Ombro de trás em dia, postura em dia."]],
+  [/^Tríceps/, ["Empurra pra baixo a carga e a preguiça.", "Tríceps na área, ferradura no braço."]],
+  [/Mesa flexora|Flexora/, ["Calcanhar no bumbum, foco no posterior."]],
+  [/Cadeira extensora/, ["Estica a perna e o limite.", "Extensora: chuta a preguiça pra longe."]],
+  [/Panturrilha/, ["Sobe, segura, desce devagar. Panturrilha agradece."]],
+  [/Dead bug/, ["Hora de virar besouro de barriga pra cima (com técnica)."]],
+  [/Perdigueiro/, ["Modo perdigueiro: braço e perna esticados, foco no alvo."]],
+  [/Gato-camelo/, ["Hora do zoológico: gato, camelo, repete."]],
+  [/Polichinelo/, ["Polichinelo: o clássico da educação física voltou."]],
+  [/Esteira/, ["A esteira não vai a lugar nenhum. Você vai."]],
+  [/Bicicleta/, ["Pedala que o destino é o shape."]],
+  [/Pallof/, ["Resiste à rotação como resiste ao doce."]]
+];
+const MSG_TIMED = ["Hora de virar tábua: {t}.", "{t} de {ex}. Pensa em algo bom e segura.", "Tempo é músculo. Bora segurar {t}.", "Segura {t} sem negociar com o relógio.", "{ex}: o minuto mais longo da sua vida te espera.", "Aperta o ▶ e encara {t}."];
+const MSG_LAST = ["Última série do {ex}. Deixa tudo nela!", "Fecha o {ex} com chave de ouro.", "Última do {ex}: depois dessa, é só glória.", "Saideira do {ex}. Capricha!"];
+const MSG_NEW = ["Agora é {ex}. Novo exercício, nova chance de brilhar.", "Troca de estação: {ex} na área.", "Próxima parada: {ex}.", "{ex} entrando em campo."];
+const MSG_SET = ["Série {s} de {n} do {ex}. Bora!", "{ex} tá te esperando, série {s}.", "Mais uma de {ex}: série {s}/{n}."];
+const MSG_END = ["Última série feita! Finaliza o treino e salva essa conquista.", "Treino zerado. Finaliza e vai pro abraço.", "Acabou! Salva o treino que esse foi histórico."];
+const HOLD_DONE = ["Segurou {t}! Tábua aprovada.", "Acabou o tempo. Pode desabar com dignidade.", "{t} cravados. O abdômen manda lembranças.", "Tempo cumprido. Respira, campeão.", "O relógio perdeu, você ganhou."];
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const recentMsg = [];
+function pickNew(arr) { // evita repetir as últimas frases
+  const fresh = arr.filter(x => !recentMsg.includes(x)), m = pick(fresh.length ? fresh : arr);
+  recentMsg.push(m); if (recentMsg.length > 12) recentMsg.shift(); return m;
+}
+function nextUp() {
+  if (!active) return null;
+  const L = active.ex.length, s0 = Math.max(0, active.lastI || 0);
+  for (let d = 0; d < L; d++) { const i = (s0 + d) % L, e = active.ex[i]; if (e.skipped) continue; const k = e.sets.findIndex(x => !x.done); if (k >= 0) return {i, e, k, n: e.sets.length}; }
+  return null;
+}
+const fill = (t, v) => t.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
+function restMsg() {
+  const nx = nextUp();
+  if (!nx) return {title: "🏁 Treino completo", body: pickNew(MSG_END)};
+  const {e, k, n} = nx, u = timeUnit(e), tgt = setHint(e, k, "reps"), v = {ex: e.name, s: k + 1, n, t: u ? tgt + tSuf(u) : tgt + " reps"};
+  const fresh = k === 0 && nx.i !== (active.lastI || 0), last = k === n - 1 && n > 1;
+  const title = fresh ? `▶ Próximo: ${e.name}` : last ? `🔥 Última série · ${e.name}` : `⏱ ${e.name} · série ${k + 1}/${n}`;
+  const pools = [], spec = (MSG_EX.find(([rx]) => rx.test(e.name)) || [])[1];
+  if (u) pools.push(MSG_TIMED, MSG_TIMED);
+  if (spec) pools.push(spec, spec);
+  if (MSG_GROUP[e.group]) pools.push(MSG_GROUP[e.group], MSG_GROUP[e.group]);
+  pools.push(fresh ? MSG_NEW : last ? MSG_LAST : MSG_SET, REST_DONE);
+  return {title, body: fill(pickNew(pick(pools)), v)};
+}
 function restNotify(kind) {
   if (!S.state.settings.notify || !canNotify() || Notification.permission !== "granted") return;
   if (window.SL && window.SL.push && window.SL.push.active()) return; // o servidor já manda
-  const done = kind === "done";
-  const title = done ? "⏱ Descanso acabou" : "⏳ Prepare-se", opt = {body: pick(done ? REST_DONE : REST_SOON), tag: "sl-rest", renotify: true, silent: true, icon: "icons/icon-192.png", badge: "icons/icon-192.png"};
+  const m = kind && kind.title ? kind : restMsg();
+  const title = m.title, opt = {body: m.body, tag: "sl-rest", renotify: true, silent: true, icon: "icons/icon-192.png", badge: "icons/icon-192.png"};
   try {
     if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.ready.then(r => r.showNotification(title, opt)).catch(() => { try { new Notification(title, opt); } catch {} });
     else new Notification(title, opt);
@@ -1591,7 +1673,7 @@ document.addEventListener("focusin", e => {
   const ex = active.ex[+t.dataset.i], f = t.dataset.f === "sload" ? "load" : "reps", v = setHint(ex, +t.dataset.k, f);
   const hasAbove = ex.sets.slice(0, +t.dataset.k).some(x => String(x[f] ?? "").trim() !== "");
   if (t.value !== "" || !hasAbove) { sugFor = null; sugChip.hidden = true; return; }
-  sugFor = t; sugChip.dataset.v = v; sugChip.innerHTML = `<span>↵</span> ${esc(v)}${f === "load" ? " " + U() : " reps"}`;
+  sugFor = t; sugChip.dataset.v = v; sugChip.innerHTML = `<span>↵</span> ${esc(v)}${f === "load" ? " " + U() : (timeUnit(ex) ? tSuf(timeUnit(ex)) : " reps")}`;
   requestAnimationFrame(sugPlace); setTimeout(sugPlace, 350);
 });
 document.addEventListener("focusout", () => setTimeout(() => { if (document.activeElement !== sugFor) { sugFor = null; sugChip.hidden = true; } }, 60));
@@ -1616,6 +1698,17 @@ window.addEventListener("pageshow", () => tick());
 let active = LS.get("fv_active", null);
 const saveActive = () => active ? LS.set("fv_active", active) : LS.del("fv_active");
 const repsTarget = r => (String(r).match(/\d+/g) || ["10"])[0];
+/* exercícios por tempo (prancha, cardio...): "s" ou "min"; null = repetições */
+const timeUnit = e => {
+  const r = String((e && e.reps) || ""), n = String((e && e.name) || "");
+  if (/\d\s*(min|minutos?)\b/i.test(r)) return "min";
+  if (/\d\s*(s|seg|segundos?)\b|\d\s*"/i.test(r)) return "s";
+  if (/^Prancha/i.test(n)) return "s";
+  if (/^(Esteira|Bicicleta ergom)/i.test(n)) return "min";
+  return null;
+};
+const tSuf = u => u === "min" ? " min" : "s";
+const fmtSet = (s, u) => u ? `${num(s.load) ? fmt(num(s.load)) + "kg · " : ""}${s.reps || "?"}${tSuf(u)}` : `${s.load === "" ? "—" : fmt(num(s.load) || 0)}×${s.reps || "?"}`;
 function liveSets(e, n) {
   const last = historyFor(e.name, 1)[0];
   return Array.from({length: n}, (_, k) => ({load: last ? (last.sets[k] || last.sets[last.sets.length - 1]).load : e.load, reps: "", done: false}));
@@ -1641,8 +1734,9 @@ function pushSync() {
   pushT = setTimeout(() => {
     const jobs = [];
     if (S.state.settings.notify && rest && !rest.go && !rest.paused && active) {
-      jobs.push({at: rest.end, title: "⏱ Descanso acabou", body: pick(REST_DONE)});
+      const m = restMsg(); jobs.push({at: rest.end, title: m.title, body: m.body});
     }
+    if (S.state.settings.notify && hold && active) { const e = active.ex[hold.i]; if (e) jobs.push({at: hold.end, title: `✅ Tempo! ${e.name}`, body: fill(pickNew(HOLD_DONE), {t: hold.label})}); }
     P.schedule(jobs);
   }, 250);
 }
@@ -1663,8 +1757,38 @@ function resumeWorkout() {
 }
 /* Sugestão de cada campo: o valor da série de cima mais próxima que já tem número */
 function setHint(e, k, f) {
+  if (f === "reps" && timeUnit(e)) return String(repsTarget(e.reps)); // por tempo: meta da ficha, não o que sobrou da série anterior
   for (let j = k - 1; j >= 0; j--) { const v = String(e.sets[j][f] ?? "").trim(); if (v !== "") return v; }
   return f === "load" ? "kg" : String(repsTarget(e.reps));
+}
+let hold = null, holdIv = null;
+const mmss = s => s >= 60 ? `${Math.floor(s / 60)}:${pad2(s % 60)}` : String(s);
+function holdStart(i, k) {
+  const e = active.ex[i], u = timeUnit(e), tgt = Math.max(1, num(String(e.sets[k].reps || "").trim() || setHint(e, k, "reps")) || 30);
+  const total = u === "min" ? tgt * 60 : tgt, lead = u === "min" ? 0 : 3;
+  rest = null; saveRest();
+  hold = {i, k, u, total, start: Date.now() + lead * 1000, end: Date.now() + (lead + total) * 1000, label: tgt + tSuf(u), last: null};
+  active.lastI = i; saveActive();
+  clearInterval(holdIv); holdIv = setInterval(holdTick, 200); renderTreino(); holdTick(); pushSync(); tick();
+}
+function holdTick() {
+  if (!hold || !active) { clearInterval(holdIv); return; }
+  const now = Date.now(), inp = document.getElementById(`s-${hold.i}-${hold.k}-r`);
+  if (now >= hold.end) return holdStop(false);
+  const pre = now < hold.start, left = Math.ceil(((pre ? hold.start : hold.end) - now) / 1000);
+  if (inp) { inp.value = pre ? `${left}…` : mmss(left); inp.classList.toggle("pre", pre); }
+  if (hold.last !== left + (pre ? "p" : "")) { hold.last = left + (pre ? "p" : ""); if (pre || left <= 3) { countBeep(); try { if (S.state.settings.vibrate) navigator.vibrate && navigator.vibrate(pre ? 40 : 60); } catch {} } }
+}
+function holdStop(early) {
+  const h = hold; if (!h) return; hold = null; clearInterval(holdIv);
+  const e = active.ex[h.i], s = e && e.sets[h.k]; if (!s) return;
+  const now = Date.now();
+  if (early && now < h.start) { saveActive(); renderTreino(); pushSync(); return; } // cancelou antes de começar
+  const secs = early ? Math.max(1, Math.round((now - h.start) / 1000)) : h.total;
+  s.reps = String(h.u === "min" ? Math.max(1, Math.round(secs / 60)) : secs);
+  if (!early) { beep(); try { if (S.state.settings.vibrate) navigator.vibrate && navigator.vibrate([300, 100, 300]); } catch {}
+    if (document.hidden) restNotify({title: `✅ Tempo! ${e.name}`, body: fill(pickNew(HOLD_DONE), {t: h.label})}); }
+  s.done = false; actions.toggleSet({dataset: {i: h.i, k: h.k}});
 }
 function startRest(sec) { rest = {end: Date.now() + sec * 1000, total: sec, go: false}; saveRest(); tick(); }
 function tick() {
@@ -2353,10 +2477,11 @@ function saveRoutine() {
 /* ============ biblioteca / picker ============ */
 let pk = {q: "", g: "", eq: "", post: false, mode: "add", open: ""};
 function openPicker(mode, keep) {
-  if (!keep) pk = {q: "", g: "", eq: mode === "browse" ? "" : (S.state.profile.equip === "academia" ? "" : S.state.profile.equip), post: false, mode, open: ""};
+  if (!keep) pk = {q: "", g: "", eq: mode === "browse" ? "" : (S.state.profile.equip === "academia" ? "" : S.state.profile.equip), post: false, mode, open: "", also: false};
   const eqChips = [["", "Todos"], ["academia", "Academia"], ["halteres", "Halteres"], ["elasticos", "Elásticos"], ["corpo", "Corpo"]];
-  openSheet(mode === "browse" ? "Biblioteca" : "Adicionar exercício",
-    `<input id="pk-q" data-f="pq" value="${esc(pk.q)}" placeholder="Buscar exercício…" autocomplete="off" aria-label="Buscar exercício">
+  openSheet(mode === "browse" ? "Biblioteca" : mode === "live" ? "Adicionar ao treino" : "Adicionar exercício",
+    `${mode === "live" ? `<div class="chips" id="pkAlso"><button class="chip ${!pk.also ? "on" : ""}" data-a="pkAlso" data-s="0">Só hoje</button><button class="chip ${pk.also ? "on" : ""}" data-a="pkAlso" data-s="1">Hoje e na ficha</button></div>` : ""}
+     <input id="pk-q" data-f="pq" value="${esc(pk.q)}" placeholder="Buscar exercício…" autocomplete="off" aria-label="Buscar exercício">
      <p class="flt-l">Grupo</p><div class="chips" id="pkG">${["", ...GROUPS].map(g => `<button class="chip" data-a="pg" data-g="${esc(g)}">${g || "Todos"}</button>`).join("")}</div>
      <p class="flt-l">Equipamento</p><div class="chips" id="pkE">${eqChips.map(([k, l]) => `<button class="chip" data-a="pe" data-e="${k}">${l}</button>`).join("")}<button class="chip rs" data-a="pp" id="pkP">◇ Foco postural</button></div>
      <div class="lib" id="pkList"></div>`, "", mode === "add" ? "editor" : mode === "swap" ? "swap" : "close", true);
@@ -2366,9 +2491,9 @@ function renderPickList() {
   const q = pk.q.trim().toLowerCase();
   const codes = pk.eq ? EQUIP[pk.eq].codes : "gdec";
   const items = LIB.filter(x => (!pk.g || x.group === pk.g) && codes.includes(x.equip) && (!pk.post || x.postural) && (!q || x.name.toLowerCase().includes(q)));
-  const act = pk.mode === "browse" ? "" : pk.mode === "swap" ? "swapTo" : "addEx";
-  const custom = q && act === "addEx" && !LIB.some(x => x.name.toLowerCase() === q)
-    ? `<div class="li"><span></span><div class="li-main"><b>${esc(pk.q.trim())}</b><span class="li-tags">Exercício próprio</span></div><button class="li-add" data-a="addEx" data-n="${esc(pk.q.trim())}" aria-label="Adicionar">+</button></div>` : "";
+  const act = pk.mode === "browse" ? "" : pk.mode === "swap" ? "swapTo" : pk.mode === "live" ? "addLiveEx" : "addEx";
+  const custom = q && (act === "addEx" || act === "addLiveEx") && !LIB.some(x => x.name.toLowerCase() === q)
+    ? `<div class="li"><span></span><div class="li-main"><b>${esc(pk.q.trim())}</b><span class="li-tags">Exercício próprio</span></div><button class="li-add" data-a="${act}" data-c="1" data-n="${esc(pk.q.trim())}" aria-label="Adicionar">+</button></div>` : "";
   $("#pkList").innerHTML = custom + (items.length ? items.map(x => `<div class="li${pk.open === x.name ? " open" : ""}">${demoBox(x.name, x.group, pk.open === x.name)}
       <button class="li-main" data-a="pkOpen" data-n="${esc(x.name)}" aria-expanded="${pk.open === x.name}"><b>${esc(x.name)}</b><span class="li-tags">${esc(x.group)} · ${EQTAG[x.equip]}${x.postural ? " · <i>◇ postural</i>" : ""}</span></button>
       ${act ? `<button class="li-add" data-a="${act}" data-n="${esc(x.name)}" aria-label="${act === "swapTo" ? "Trocar por" : "Adicionar"} ${esc(x.name)}">${act === "swapTo" ? "⇄" : "+"}</button>` : `<span></span>`}
@@ -2760,28 +2885,31 @@ function renderTreino() {
   const cards = A.ex.map((e, i) => {
     const dn = e.sets.filter(s => s.done).length, L = byName(e.name);
     const last = historyFor(e.name, 1)[0], best = bestFor(e.name);
-    const rows = e.sets.map((s, k) => `<div class="srow ${s.done ? "done" : ""}"><span class="sl">S${k + 1}</span>
-      <input id="s-${i}-${k}-l" inputmode="decimal" aria-label="Carga da série ${k + 1}" data-f="sload" data-i="${i}" data-k="${k}" value="${s.load}" placeholder="${esc(setHint(e, k, "load"))}">
-      <input id="s-${i}-${k}-r" inputmode="numeric" aria-label="Repetições da série ${k + 1}" data-f="sreps" data-i="${i}" data-k="${k}" value="${s.reps}" placeholder="${esc(setHint(e, k, "reps"))}">
-      <button class="chk" data-a="toggleSet" data-i="${i}" data-k="${k}" aria-pressed="${s.done}" aria-label="Concluir série ${k + 1}">✓</button></div>`).join("");
+    const tu = timeUnit(e);
+    const rows = e.sets.map((s, k) => { const run = hold && hold.i === i && hold.k === k, tmr = tu && !s.done && (run || String(s.reps ?? "").trim() === "");
+      return `<div class="srow ${s.done ? "done" : ""} ${run ? "run" : ""}"><span class="sl">S${k + 1}</span>
+      <input id="s-${i}-${k}-l" inputmode="decimal" aria-label="Carga da série ${k + 1}" data-f="sload" data-i="${i}" data-k="${k}" value="${s.load}" placeholder="${esc(tu ? "—" : setHint(e, k, "load"))}">
+      <span class="tin ${tu ? "t" : ""}" data-u="${tu ? (tu === "min" ? "min" : "s") : ""}"><input id="s-${i}-${k}-r" inputmode="numeric" aria-label="${tu ? "Tempo" : "Repetições"} da série ${k + 1}" data-f="sreps" data-i="${i}" data-k="${k}" value="${run ? "" : s.reps}" placeholder="${esc(setHint(e, k, "reps"))}"${run ? " readonly" : ""}></span>
+      ${tmr ? `<button class="chk tm" data-a="holdT" data-i="${i}" data-k="${k}" aria-label="${run ? "Parar" : "Iniciar"} cronômetro da série ${k + 1}">${run ? "■" : "▶"}</button>`
+        : `<button class="chk" data-a="toggleSet" data-i="${i}" data-k="${k}" aria-pressed="${s.done}" aria-label="Concluir série ${k + 1}">✓</button>`}</div>`; }).join("");
     const done = dn === e.sets.length;
     if (e.skipped) {
       return `<article class="pnl xm collapsed skipped" id="xm-${i}"><div class="xm-col">
         <span class="xm-n sk">↷ ${pad2(i + 1)}</span><span class="xm-cm"><b>${esc(e.name)}</b><small>Pulado neste treino</small></span><button class="lnk" data-a="unskipEx" data-i="${i}">Desfazer</button></div></article>`;
     }
     if (done && !e.open && S.state.settings.collapse) {
-      const sum = e.sets.map(s => `${s.load === "" ? "—" : fmt(num(s.load) || 0)}×${s.reps || "?"}`).join(" · ");
+      const sum = e.sets.map(s => fmtSet(s, timeUnit(e))).join(" · ");
       return `<article class="pnl xm complete collapsed" id="xm-${i}"><button class="xm-col" data-a="xmOpen" data-i="${i}" aria-expanded="false">
         <span class="xm-n">✓ ${pad2(i + 1)}</span><span class="xm-cm"><b>${esc(e.name)}</b><small>${e.sets.length} série${e.sets.length > 1 ? "s" : ""} · ${esc(sum)}</small></span><span class="lnk">Abrir</span></button></article>`;
     }
     return `<article class="pnl xm ${done ? "complete" : ""}" id="xm-${i}">
       <div class="xm-h"><span class="xm-n">${pad2(i + 1)}/${pad2(A.ex.length)}</span><div><h3>${esc(e.name)}</h3><p class="kicker" style="margin-top:4px">${esc(e.group)} · ${esc(e.plan)} · ${e.rest}s</p></div>${done ? `<button class="lnk" data-a="xmClose" data-i="${i}">Recolher</button>` : `<span class="row" style="gap:14px;flex-wrap:nowrap"><button class="lnk mut" data-a="skipEx" data-i="${i}">Pular ↷</button><button class="lnk" data-a="swapLive" data-i="${i}">Trocar ⇄</button></span>`}</div>
       <div class="segs" style="grid-template-columns:repeat(${e.sets.length},1fr)" aria-hidden="true">${e.sets.map(s => `<i class="${s.done ? "on" : ""}"></i>`).join("")}</div>
-      <p class="last">${last ? `ÚLTIMA ▸ ${last.sets.map(s => `${fmt(s.load)}×${s.reps}`).join(" · ")}${best ? ` · <b>REC ${fmt(best)}${U().toUpperCase()}</b>` : ""}` : "PRIMEIRO REGISTRO DESTE EXERCÍCIO"}</p>
+      <p class="last">${last ? `ÚLTIMA ▸ ${last.sets.map(s => fmtSet(s, timeUnit(e))).join(" · ")}${best ? ` · <b>REC ${fmt(best)}${U().toUpperCase()}</b>` : ""}` : "PRIMEIRO REGISTRO DESTE EXERCÍCIO"}</p>
       <div class="exec">${demoBox(e.name, e.group, true)}<div>${L ? `<p class="flt-l" style="margin-bottom:6px">Postura crítica</p><ol class="cues-l">${L.cues.map((c, n) => `<li data-n="0${n + 1}">${esc(c)}</li>`).join("")}</ol>` : `<p class="meta">Exercício próprio. Veja o vídeo de referência.</p>`}
         <div class="exec-links"><a class="lnk" href="${yt(L ? L.name : e.name)}" target="_blank" rel="noopener">▶ Vídeo real</a><button class="lnk" data-a="exec" data-n="${esc(e.name)}" data-g="${esc(e.group)}">⤢ Ampliar</button></div></div></div>
       ${e.note ? `<p class="note-l">${esc(e.note)}</p>` : ""}
-      <div class="sets"><div class="sets-h"><span>Série</span><span>Carga ${U()}</span><span>Reps</span><span>OK</span></div>${rows}</div>
+      <div class="sets"><div class="sets-h"><span>Série</span><span>Carga ${U()}</span><span>${tu ? `Tempo (${tu === "min" ? "min" : "seg"})` : "Reps"}</span><span>${tu ? "" : "OK"}</span></div>${rows}</div>
       <div class="xm-foot"><button class="lnk" data-a="addSet" data-i="${i}">+ Série</button>${e.sets.length > 1 ? `<button class="lnk mut" data-a="rmSet" data-i="${i}">− Série</button>` : ""}</div></article>`;
   }).join("");
   v.innerHTML = `<div class="pnl hot reactor">
@@ -2793,7 +2921,7 @@ function renderTreino() {
         <div class="row">${sampleFn && A.ex.some(e => historyFor(e.name, 1).length) ? `<button class="b b-rose sm" data-a="aiLoads" title="A IA olha seus últimos treinos e preenche a carga de cada série">✦ Sugerir cargas de hoje</button>` : ""}</div><div class="row">${A.pausedAt ? `<button class="b b-pri sm" data-a="resumeW">▶ Retomar</button>` : `<button class="b sm" data-a="pauseW">❚❚ Pausar</button>`}<button class="b b-bad sm" data-a="stopW">■ Parar</button></div></div>
     </div>
     <div id="aiLoadsOut" class="pnl rose-edge ai-out" hidden style="margin-bottom:12px"></div>
-    ${cards}<button class="b b-pri w" style="padding:16px" data-a="finish">▸ Finalizar treino</button>`;
+    ${cards}<button class="b w addlive" data-a="addLive">+ Adicionar exercício</button><button class="b b-pri w" style="padding:16px" data-a="finish">▸ Finalizar treino</button>`;
 }
 async function aiLoads() {
   const out = $("#aiLoadsOut"); out.hidden = false; out.innerHTML = `<span class="tagx">IA</span><p class="kicker caret">Lendo seu histórico</p>`;
@@ -3005,6 +3133,18 @@ const actions = {
   pe: b => { pk.eq = b.dataset.e; renderPickList(); },
   pp: () => { pk.post = !pk.post; renderPickList(); },
   pkOpen: b => { pk.open = pk.open === b.dataset.n ? "" : b.dataset.n; renderPickList(); },
+  addLive: () => openPicker("live"),
+  pkAlso: b => { pk.also = b.dataset.s === "1"; document.querySelectorAll("#pkAlso .chip").forEach(c => c.classList.toggle("on", c.dataset.s === b.dataset.s)); },
+  addLiveEx: b => {
+    if (!active) return;
+    const L = b.dataset.c ? null : byName(b.dataset.n);
+    const r = L ? mkFromLib(L, null, S.state.profile) : {id: uid(), name: b.dataset.n, group: "Outro", pattern: "", sets: 3, reps: "10-12", load: "", rest: 60, note: ""};
+    if (/^Prancha/.test(r.name)) { r.reps = "30-40s"; r.rest = 45; } else if (L && L.group === "Cardio") { r.sets = 1; r.reps = "10 min"; r.rest = 30; } else if (L && L.group === "Mobilidade") { r.sets = 2; r.reps = "10"; r.rest = 20; }
+    active.ex.push({name: r.name, group: r.group, pattern: r.pattern || "", rest: r.rest, plan: `${r.sets}×${r.reps}`, reps: r.reps, note: "", added: true, sets: liveSets(r, r.sets)});
+    if (pk.also) { const R = S.state.routines.find(x => x.id === active.routineId); if (R) { R.exercises.push(r); saveState(); } }
+    saveActive(); closeSheet(); renderTreino(); toast(pk.also ? `${r.name} adicionado hoje e na ficha` : `${r.name} adicionado ao treino`);
+    const el = $("#xm-" + (active.ex.length - 1)); if (el) setTimeout(() => el.scrollIntoView({behavior: reduceMotion ? "auto" : "smooth", block: "start"}), 60);
+  },
   addEx: b => {
     const L = byName(b.dataset.n);
     draft.exercises.push(L ? mkFromLib(L, null, S.state.profile) : {id: uid(), name: b.dataset.n, group: "Outro", pattern: "", sets: 3, reps: "10-12", load: "", rest: 60, note: ""});
@@ -3029,11 +3169,20 @@ const actions = {
   impBack: () => { imp.routines = null; renderImport(); },
   impSave: () => impSave(),
   impDel: b => { const r = imp.routines[+b.dataset.r]; r.exercises.splice(+b.dataset.e, 1); imp.routines = imp.routines.filter(x => x.exercises.length); if (!imp.routines.length) imp.routines = null; renderImport(); },
+  holdT: b => {
+    if (active && active.pausedAt) resumeWorkout();
+    ensureAudio(); keepAwake();
+    const i = +b.dataset.i, k = +b.dataset.k;
+    if (hold && hold.i === i && hold.k === k) return holdStop(true);
+    if (hold) { hold = null; clearInterval(holdIv); }
+    holdStart(i, k);
+  },
   toggleSet: b => {
     if (active && active.pausedAt) resumeWorkout();
     ensureAudio(); keepAwake();
     const e = active.ex[+b.dataset.i], s = e.sets[+b.dataset.k];
-    s.done = !s.done;
+    if (hold && hold.i === +b.dataset.i && hold.k === +b.dataset.k) { hold = null; clearInterval(holdIv); }
+    s.done = !s.done; active.lastI = +b.dataset.i;
     if (s.done) { const k = +b.dataset.k, hl = setHint(e, k, "load");
       if (!String(s.load ?? "").trim() && hl !== "kg") s.load = hl;
       if (!String(s.reps ?? "").trim()) s.reps = setHint(e, k, "reps"); startRest(S.state.settings.rest === "ficha" ? e.rest : +S.state.settings.rest); }
@@ -3193,7 +3342,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261109213052";</script>
+<script>window.SL_VERSION = "20261118190128";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
