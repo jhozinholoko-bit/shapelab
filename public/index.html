@@ -303,10 +303,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(51,191,24
 .sets{display:flex;flex-direction:column;gap:7px}
 .sets-h,.srow{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(0,1fr) 50px;gap:10px;align-items:center}
 .sets-h span{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);text-align:center}
-.tune-card{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;align-items:center;margin-bottom:14px}
+.tune-card{display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px 14px;align-items:start;margin-bottom:14px;padding:18px 18px 16px}
+.tune-card h3{margin:1px 0 0;font-size:17px;line-height:1.25}
 .tune-card .tc-ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:20px;color:var(--rose-hi);background:rgba(255,45,149,.12);border:1px solid rgba(255,45,149,.3)}
-.tune-card .meta{margin:2px 0 0}.tune-card .meta b{color:var(--ink)}
-.tune-card>.b,.tune-card>.lnk{grid-column:1/-1}.tune-card>.b{margin-top:8px}
+.tune-card .meta{margin:4px 0 0;font-size:14px;line-height:1.45;text-wrap:pretty}.tune-card .meta b{color:var(--ink)}
+.tune-card>.b,.tune-card>.lnk{grid-column:1/-1}.tune-card>.b{margin-top:12px}.tune-card>.lnk{justify-self:center;margin-top:6px}
 .tune .chip.on{background:rgba(255,45,149,.16);border-color:var(--rose);color:#fff}
 .tune .mi.on{border-color:var(--cer)}
 .tp{margin-bottom:10px;padding:14px 16px}.tp h3{margin:0 0 8px;font-size:16px}
@@ -2439,8 +2440,8 @@ function renderFichas() {
         <button class="b sm" data-a="edit" data-id="${r.id}">Editar</button><button class="b sm" data-a="more" data-id="${r.id}">Mais opções</button></div></article>`;
     }).join("");
     h += `<button class="b w" data-a="addRoutine" style="margin-bottom:12px">+ Adicionar ficha</button>`;
-    h += `<div class="pnl tune-card"><div class="tc-ic" aria-hidden="true">✦</div><div><p class="kicker">Aprimorar treino</p>
-      <p class="meta">${(p.focusGroups || []).length ? `Foco atual: <b>${p.focusGroups.map(esc).join(", ")}</b>` : "Escolha os músculos que quer priorizar e o app ajusta suas fichas."}</p></div>
+    h += `<div class="pnl tune-card"><div class="tc-ic" aria-hidden="true">✦</div><div><h3>Aprimorar treino</h3>
+      <p class="meta">${(p.focusGroups || []).length ? `Foco atual: <b>${p.focusGroups.map(esc).join(", ")}</b>` : "Escolha os músculos que você quer priorizar e o app ajusta suas fichas."}</p></div>
       <button class="b b-rose w" data-a="tune">✦ Aprimorar treino</button>
       ${S.state.tuneBak ? `<button class="lnk mut" data-a="tuneUndo">↶ Desfazer último aprimoramento</button>` : ""}</div>`;
   }
@@ -3579,7 +3580,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261118235731";</script>
+<script>window.SL_VERSION = "20261119000252";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
