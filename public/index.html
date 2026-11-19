@@ -303,6 +303,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(51,191,24
 .sets{display:flex;flex-direction:column;gap:7px}
 .sets-h,.srow{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(0,1fr) 50px;gap:10px;align-items:center}
 .sets-h span{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);text-align:center}
+.rv-sum{margin:0 0 12px}
+.li.rv .li-main b{display:flex;gap:8px;align-items:baseline}
+.rv-n{font:500 11px var(--f-mono);color:var(--muted);letter-spacing:.06em}
+.li.rv .rv-x{grid-column:1/-1;display:flex;flex-direction:column;gap:4px}
+.li.rv .rv-x:empty{display:none}
+.li.rv.open>.rv-x{grid-row:3;padding-top:4px}.li.rv.open>.exec-links{grid-row:4!important}
+.rv-note{margin:0;font-size:13.5px;color:var(--soft)}
+.rv-last{margin:0;font:500 11.5px var(--f-mono);letter-spacing:.06em;color:var(--cer-hi)}
 .tune-card{display:grid;grid-template-columns:44px minmax(0,1fr);gap:4px 14px;align-items:start;margin-bottom:14px;padding:18px 18px 16px}
 .tune-card h3{margin:1px 0 0;font-size:17px;line-height:1.25}
 .tune-card .tc-ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:20px;color:var(--rose-hi);background:rgba(255,45,149,.12);border:1px solid rgba(255,45,149,.3)}
@@ -2456,7 +2464,7 @@ function renderFichas() {
       return `<article class="pnl rc"><div class="rc-head"><span class="glyph" aria-hidden="true">${letter(i)}</span><div>
         <p class="kicker num">${r.exercises.length} exercícios · ${sets} séries · ~${estMin(r)} min</p><h2>${esc(r.name)}</h2></div></div>
         ${r.exercises.length ? `<ul class="readout">${list}${more}</ul>` : `<p class="meta">Sem exercícios ainda.</p>`}
-        <div class="rc-actions" style="grid-template-columns:1fr 1fr"><button class="b b-pri" data-a="start" data-id="${r.id}" ${r.exercises.length ? "" : "disabled"}>${active && active.routineId === r.id ? "▸ Continuar treino" : "▸ Iniciar treino"}</button>
+        <div class="rc-actions" style="grid-template-columns:1fr 1fr"><button class="b b-pri" data-a="rview" data-id="${r.id}" ${r.exercises.length ? "" : "disabled"}>◉ Visualizar treino</button>
         <button class="b sm" data-a="edit" data-id="${r.id}">Editar</button><button class="b sm" data-a="more" data-id="${r.id}">Mais opções</button></div></article>`;
     }).join("");
     h += `<button class="b w" data-a="addRoutine" style="margin-bottom:12px">+ Adicionar ficha</button>`;
@@ -2538,6 +2546,28 @@ function openTunePreview() {
       <p class="kicker num">${r.ex.length} exercícios</p></div>`).join("");
   openSheet("Mudanças sugeridas", `<p class="meta" style="margin:0 0 12px">Foco em <b>${tune.sel.map(esc).join(", ")}</b> · ${tune.mode === "swap" ? "mesma quantidade de exercícios" : "exercícios adicionados"}</p>${body}`,
     any ? `<button class="b b-pri w" data-a="tuneApply">Aplicar nas fichas ▸</button>` : `<button class="b w" data-a="tune">Escolher outros músculos</button>`, "tune");
+}
+
+/* ============ visualizar ficha (só leitura) ============ */
+let rv = {id: null, open: ""};
+function openRView(id) {
+  const r = S.state.routines.find(x => x.id === id); if (!r) return;
+  rv.id = id;
+  const sets = r.exercises.reduce((t, e) => t + e.sets, 0);
+  const items = r.exercises.map((e, k) => {
+    const L = byName(e.name), op = rv.open === String(k), u = timeUnit(e);
+    const last = historyFor(e.name, 1)[0];
+    return `<div class="li rv${op ? " open" : ""}">${demoBox(e.name, e.group, op)}
+      <button class="li-main" data-a="rvOpen" data-k="${k}" aria-expanded="${op}"><b><span class="rv-n">${pad2(k + 1)}</span>${esc(e.name)}</b>
+        <span class="li-tags">${esc(e.group)} · ${e.sets}×${esc(e.reps)}${u && !/s|min/.test(String(e.reps)) ? tSuf(u) : ""} · ${e.rest}s${e.load !== "" ? ` · ${fmt(e.load)}${U()}` : ""}</span></button><span></span>
+      ${op ? `${L ? `<ol class="cues-l">${L.cues.map((c, i) => `<li data-n="0${i + 1}">${esc(c)}</li>`).join("")}</ol>` : `<p class="meta cues-l">Exercício próprio.</p>`}
+        <div class="rv-x">${e.note ? `<p class="rv-note">📝 ${esc(e.note)}</p>` : ""}${last ? `<p class="rv-last">ÚLTIMA ▸ ${last.sets.map(s => fmtSet(s, u)).join(" · ")}</p>` : ""}</div>
+        <div class="exec-links" style="grid-column:1/-1"><button class="lnk" data-a="exec" data-n="${esc(e.name)}" data-g="${esc(e.group)}" data-back="rview">⤢ Ver execução</button><a class="lnk" href="${yt(e.name)}" target="_blank" rel="noopener">▶ Vídeo real</a></div>` : ""}
+    </div>`;
+  }).join("");
+  openSheet(r.name, `<p class="kicker num rv-sum">${r.exercises.length} exercícios · ${sets} séries · ~${estMin(r)} min</p><div class="lib rv-list">${items}</div>`,
+    `<button class="b w" data-a="edit" data-id="${r.id}">Editar ficha</button>`, "close", true);
+  paintDemos();
 }
 let moreArm = false;
 function openMore(id) {
@@ -3391,6 +3421,8 @@ const actions = {
   aiChip: b => { $("#aiReq").value = b.dataset.c; },
   aiGen: () => aiGenerate(),
   aiUse: () => { if (aiResult) openEditor(null, {...aiResult, id: uid()}); },
+  rview: b => { rv.open = ""; openRView(b.dataset.id); },
+  rvOpen: b => { rv.open = rv.open === b.dataset.k ? "" : b.dataset.k; const s = $("#sheetBody").scrollTop; openRView(rv.id); $("#sheetBody").scrollTop = s; },
   tune: () => { tune.plan = null; openTune(); },
   tuneG: b => { const g = b.dataset.g, i = tune.sel.indexOf(g); if (i >= 0) tune.sel.splice(i, 1); else { if (tune.sel.length >= 3) { toast("Escolha até 3 músculos"); return; } tune.sel.push(g); } tune.plan = 1; openTune(); },
   tuneM: b => { tune.mode = b.dataset.m; tune.plan = 1; openTune(); },
@@ -3403,7 +3435,7 @@ const actions = {
     tune.plan = null; saveState(); closeSheet(); renderFichas(); toast("Fichas aprimoradas");
   },
   tuneUndo: () => { const b = S.state.tuneBak; if (!b) return; S.state.routines = b.routines; S.state.profile.focusGroups = b.focus; delete S.state.tuneBak; saveState(); renderFichas(); toast("Aprimoramento desfeito"); },
-  sheetBack: () => { if (sheetBack === "editor" && draft) renderEditor(); else if (sheetBack === "swap" && swapCtx) openSwap(swapCtx.ctx, swapCtx.i); else if (sheetBack === "tune") { tune.plan = 1; openTune(); } else if (sheetBack === "picker") openPicker(pk.mode, true); else closeSheet(); },
+  sheetBack: () => { if (sheetBack === "editor" && draft) renderEditor(); else if (sheetBack === "swap" && swapCtx) openSwap(swapCtx.ctx, swapCtx.i); else if (sheetBack === "rview" && rv.id) openRView(rv.id); else if (sheetBack === "tune") { tune.plan = 1; openTune(); } else if (sheetBack === "picker") openPicker(pk.mode, true); else closeSheet(); },
   pick: () => openPicker("add"),
   pg: b => { pk.g = b.dataset.g; renderPickList(); },
   pe: b => { pk.eq = b.dataset.e; renderPickList(); },
@@ -3549,7 +3581,7 @@ const actions = {
       <button class="mi" data-a="import"><span class="mi-ic">↓</span><span><b>Importar do personal</b><small>Mande o PDF ou cole o texto. O app separa as fichas e reconhece os exercícios.</small></span><span class="mi-go">›</span></button>
       <button class="mi" data-a="new"><span class="mi-ic">+</span><span><b>Montar do zero</b><small>Adicione os exercícios um a um.</small></span><span class="mi-go">›</span></button></div>`, ""); },
   gateBack: () => { gateStep = 0; renderGate(); },
-  exec: b => openExec(b.dataset.n, b.dataset.g, b.dataset.back === "picker" ? "picker" : "close"),
+  exec: b => openExec(b.dataset.n, b.dataset.g, ["picker", "rview"].includes(b.dataset.back) ? b.dataset.back : "close"),
   execEd: b => { const e = draft.exercises[+b.dataset.i]; if (e) openExec(e.name, e.group, "editor"); },
   mediaPick: () => { const f = $("#mediaFile"); if (f) f.click(); },
   mediaDel: () => deleteMedia()
@@ -3619,7 +3651,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261119001415";</script>
+<script>window.SL_VERSION = "20261119001617";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
