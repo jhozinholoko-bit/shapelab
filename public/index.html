@@ -303,6 +303,20 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(51,191,24
 .sets{display:flex;flex-direction:column;gap:7px}
 .sets-h,.srow{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(0,1fr) 50px;gap:10px;align-items:center}
 .sets-h span{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);text-align:center}
+.tune-card{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;align-items:center;margin-bottom:14px}
+.tune-card .tc-ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:20px;color:var(--rose-hi);background:rgba(255,45,149,.12);border:1px solid rgba(255,45,149,.3)}
+.tune-card .meta{margin:2px 0 0}.tune-card .meta b{color:var(--ink)}
+.tune-card>.b,.tune-card>.lnk{grid-column:1/-1}.tune-card>.b{margin-top:8px}
+.tune .chip.on{background:rgba(255,45,149,.16);border-color:var(--rose);color:#fff}
+.tune .mi.on{border-color:var(--cer)}
+.tp{margin-bottom:10px;padding:14px 16px}.tp h3{margin:0 0 8px;font-size:16px}
+.tp-l{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px}
+.tp-l li{display:flex;gap:10px;align-items:baseline;font-size:14.5px}
+.tp-l li span{font:600 14px var(--f-mono);width:14px}
+.tp-l li.rm{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(255,255,255,.25)}
+.tp-l li.rm span{color:var(--muted)}
+.tp-l li.add span{color:var(--rose-hi)}
+.tp-l li em{font-style:normal;font:500 10.5px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--rose-hi);margin-left:4px}
 .addlive{margin:4px 0 12px;padding:14px;border:1px dashed var(--line-2);background:transparent;color:var(--cer-hi);font-weight:600}
 .srow .tin{position:relative;display:block;min-width:0}
 .srow .tin input{width:100%}
@@ -2425,8 +2439,84 @@ function renderFichas() {
         <button class="b sm" data-a="edit" data-id="${r.id}">Editar</button><button class="b sm" data-a="more" data-id="${r.id}">Mais opções</button></div></article>`;
     }).join("");
     h += `<button class="b w" data-a="addRoutine" style="margin-bottom:12px">+ Adicionar ficha</button>`;
+    h += `<div class="pnl tune-card"><div class="tc-ic" aria-hidden="true">✦</div><div><p class="kicker">Aprimorar treino</p>
+      <p class="meta">${(p.focusGroups || []).length ? `Foco atual: <b>${p.focusGroups.map(esc).join(", ")}</b>` : "Escolha os músculos que quer priorizar e o app ajusta suas fichas."}</p></div>
+      <button class="b b-rose w" data-a="tune">✦ Aprimorar treino</button>
+      ${S.state.tuneBak ? `<button class="lnk mut" data-a="tuneUndo">↶ Desfazer último aprimoramento</button>` : ""}</div>`;
   }
   $("#v-fichas").innerHTML = h;
+}
+
+/* ============ aprimorar treino: priorizar grupos musculares ============ */
+const TUNE_GROUPS = ["Peito", "Costas", "Ombros", "Bíceps", "Tríceps", "Quadríceps", "Posterior", "Glúteos", "Panturrilha", "Core"];
+const UPPER_G = ["Peito", "Costas", "Ombros", "Bíceps", "Tríceps"], LOWER_G = ["Quadríceps", "Posterior", "Glúteos", "Panturrilha"];
+const ISO_PAT = ["bi", "tri", "lat", "rear", "calf", "fly", "ham", "quad", "corelat", "core", "glute"];
+let tune = {sel: [], mode: "swap", plan: null};
+/* a ficha combina com o grupo? (dia de superior recebe peito, dia de inferior recebe glúteo...) */
+function tuneFits(r, g) {
+  const gs = r.exercises.map(e => e.group);
+  if (gs.includes(g)) return true;
+  if (g === "Core") return true;
+  const up = gs.filter(x => UPPER_G.includes(x)).length, lo = gs.filter(x => LOWER_G.includes(x)).length;
+  return UPPER_G.includes(g) ? up >= Math.max(1, lo) : lo >= Math.max(1, up);
+}
+function tunePlan(sel, mode) {
+  const p = S.state.profile, codes = (EQUIP[p.equip] || EQUIP.academia).codes, ps = pains(p);
+  const usedAll = new Set(S.state.routines.flatMap(r => r.exercises.map(e => e.name)));
+  const out = [];
+  for (const r of S.state.routines) {
+    const ex = clone(r.exercises), changes = [];
+    for (const g of (sel.length === 1 ? [sel[0], sel[0]] : sel)) { // 1 grupo escolhido = 2 trocas por ficha
+      if (!tuneFits({exercises: ex}, g)) continue;
+      const have = ex.filter(e => e.group === g), pats = new Set(have.map(e => e.pattern));
+      let pool = LIB.filter(x => x.group === g && codes.includes(x.equip) && !x.avoid.some(a => ps.includes(a)) && !ex.some(e => e.name === x.name));
+      pool.sort((a, b) => (pats.has(a.pattern) - pats.has(b.pattern)) || (usedAll.has(a.name) - usedAll.has(b.name)) || (a.extra - b.extra));
+      const L = pool[0]; if (!L) continue;
+      const n = mkFromLib(L, have.length ? "acc" : (ISO_PAT.includes(L.pattern) ? "acc" : "main"), p);
+      usedAll.add(L.name);
+      let out1 = null;
+      if (mode === "swap") {
+        const cnt = {}; ex.forEach(e => cnt[e.group] = (cnt[e.group] || 0) + 1);
+        const cands = ex.map((e, k) => ({e, k})).filter(({e}) => !sel.includes(e.group) && !["mobU", "mobL", "cardio"].includes(e.pattern) && !/Mobilidade|Cardio/.test(e.group) && !e.tuned);
+        // tira primeiro isolados de grupos repetidos; protege compostos, posturais e o último exercício de cada grupo
+        const sc = ({e, k}) => (cnt[e.group] || 0) * 6 + (ISO_PAT.includes(e.pattern) ? 20 : -10) - (cnt[e.group] === 1 ? 15 : 0) - ((byName(e.name) || {}).postural ? 12 : 0) + k / 100;
+        cands.sort((a, b) => sc(b) - sc(a));
+        if (!cands.length) continue;
+        out1 = cands[0]; ex.splice(out1.k, 1);
+      }
+      n.tuned = true;
+      let at = -1; ex.forEach((e, k) => { if (e.group === g) at = k; });
+      if (at < 0) { at = 0; while (at < ex.length && /Mobilidade/.test(ex[at].group)) at++; at--; }
+      ex.splice(at + 1, 0, n);
+      changes.push({g, add: n.name, rm: out1 ? out1.e.name : null});
+    }
+    out.push({id: r.id, name: r.name, ex, changes});
+  }
+  return out;
+}
+function openTune() {
+  const p = S.state.profile;
+  if (!tune.plan) tune.sel = (p.focusGroups || []).slice();
+  tune.plan = null;
+  openSheet("Aprimorar treino", `<div class="tune">
+    <p class="lede" style="margin:0">Quais músculos você quer focar mais?</p>
+    <p class="meta">Escolha até 3. O app prioriza esses músculos nas fichas onde eles combinam com o dia.</p>
+    <div class="chips" id="tuneG">${TUNE_GROUPS.map(g => `<button class="chip ${tune.sel.includes(g) ? "on" : ""}" data-a="tuneG" data-g="${g}" aria-pressed="${tune.sel.includes(g)}">${g}</button>`).join("")}</div>
+    <p class="kicker" style="margin-top:18px">Como ajustar</p>
+    <div class="menu" id="tuneM">
+      <button class="mi ${tune.mode === "swap" ? "on" : ""}" data-a="tuneM" data-m="swap"><span class="mi-ic">⇄</span><span><b>Trocar exercícios</b><small>Mantém a quantidade de exercícios. Tira um de outra área que já tem bastante e coloca um do foco.</small></span><span class="mi-go">${tune.mode === "swap" ? "●" : "○"}</span></button>
+      <button class="mi ${tune.mode === "add" ? "on" : ""}" data-a="tuneM" data-m="add"><span class="mi-ic">＋</span><span><b>Adicionar exercícios</b><small>Mantém tudo e acrescenta exercícios do foco. O treino fica mais longo.</small></span><span class="mi-go">${tune.mode === "add" ? "●" : "○"}</span></button>
+    </div></div>`,
+    `<button class="b b-pri w" data-a="tunePrev" ${tune.sel.length ? "" : "disabled"}>Ver mudanças ▸</button>`);
+}
+function openTunePreview() {
+  tune.plan = tunePlan(tune.sel, tune.mode);
+  const any = tune.plan.some(r => r.changes.length);
+  const body = tune.plan.map(r => `<div class="pnl tp"><h3>${esc(r.name)}</h3>${r.changes.length ? `<ul class="tp-l">${r.changes.map(c => `
+      ${c.rm ? `<li class="rm"><span>−</span>${esc(c.rm)}</li>` : ""}<li class="add"><span>+</span>${esc(c.add)} <em>${esc(c.g)}</em></li>`).join("")}</ul>` : `<p class="meta">Sem mudanças: esses músculos não combinam com este dia.</p>`}
+      <p class="kicker num">${r.ex.length} exercícios</p></div>`).join("");
+  openSheet("Mudanças sugeridas", `<p class="meta" style="margin:0 0 12px">Foco em <b>${tune.sel.map(esc).join(", ")}</b> · ${tune.mode === "swap" ? "mesma quantidade de exercícios" : "exercícios adicionados"}</p>${body}`,
+    any ? `<button class="b b-pri w" data-a="tuneApply">Aplicar nas fichas ▸</button>` : `<button class="b w" data-a="tune">Escolher outros músculos</button>`, "tune");
 }
 let moreArm = false;
 function openMore(id) {
@@ -3262,7 +3352,19 @@ const actions = {
   aiChip: b => { $("#aiReq").value = b.dataset.c; },
   aiGen: () => aiGenerate(),
   aiUse: () => { if (aiResult) openEditor(null, {...aiResult, id: uid()}); },
-  sheetBack: () => { if (sheetBack === "editor" && draft) renderEditor(); else if (sheetBack === "swap" && swapCtx) openSwap(swapCtx.ctx, swapCtx.i); else if (sheetBack === "picker") openPicker(pk.mode, true); else closeSheet(); },
+  tune: () => { tune.plan = null; openTune(); },
+  tuneG: b => { const g = b.dataset.g, i = tune.sel.indexOf(g); if (i >= 0) tune.sel.splice(i, 1); else { if (tune.sel.length >= 3) { toast("Escolha até 3 músculos"); return; } tune.sel.push(g); } tune.plan = 1; openTune(); },
+  tuneM: b => { tune.mode = b.dataset.m; tune.plan = 1; openTune(); },
+  tunePrev: () => { if (tune.sel.length) openTunePreview(); },
+  tuneApply: () => {
+    if (!tune.plan) return;
+    S.state.tuneBak = {at: Date.now(), routines: clone(S.state.routines), focus: S.state.profile.focusGroups || []};
+    for (const t of tune.plan) { const r = S.state.routines.find(x => x.id === t.id); if (r && t.changes.length) r.exercises = t.ex.map(e => { delete e.tuned; return e; }); }
+    S.state.profile.focusGroups = tune.sel.slice();
+    tune.plan = null; saveState(); closeSheet(); renderFichas(); toast("Fichas aprimoradas");
+  },
+  tuneUndo: () => { const b = S.state.tuneBak; if (!b) return; S.state.routines = b.routines; S.state.profile.focusGroups = b.focus; delete S.state.tuneBak; saveState(); renderFichas(); toast("Aprimoramento desfeito"); },
+  sheetBack: () => { if (sheetBack === "editor" && draft) renderEditor(); else if (sheetBack === "swap" && swapCtx) openSwap(swapCtx.ctx, swapCtx.i); else if (sheetBack === "tune") { tune.plan = 1; openTune(); } else if (sheetBack === "picker") openPicker(pk.mode, true); else closeSheet(); },
   pick: () => openPicker("add"),
   pg: b => { pk.g = b.dataset.g; renderPickList(); },
   pe: b => { pk.eq = b.dataset.e; renderPickList(); },
@@ -3477,7 +3579,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261118190843";</script>
+<script>window.SL_VERSION = "20261118235731";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
