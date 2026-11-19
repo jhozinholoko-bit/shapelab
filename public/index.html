@@ -318,6 +318,17 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(51,191,24
 .tp-l li.rm span{color:var(--muted)}
 .tp-l li.add span{color:var(--rose-hi)}
 .tp-l li em{font-style:normal;font:500 10.5px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--rose-hi);margin-left:4px}
+.sask{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:rgba(3,5,8,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .2s}
+.sask.on{opacity:1;pointer-events:auto}
+.sask-box{width:100%;max-width:420px;display:flex;flex-direction:column;gap:8px;padding:20px 18px 12px;border-radius:24px;background:var(--bg-2,#11141b);border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.6);transform:translateY(20px);transition:transform .25s cubic-bezier(.2,.9,.3,1.1)}
+.sask.on .sask-box{transform:none}
+.sask-box h3{margin:0;font-size:19px;line-height:1.25}.sask-box .meta{margin:0 0 6px}
+.sask-box .sc-o{border:1px solid var(--line);background:rgba(255,255,255,.03);padding:13px 14px}
+.sask-box .sc-o .sc-ic{background:var(--cer);color:#fff}
+.sask-box .sc-o.alw .sc-ic{background:var(--rose)}
+.sask-box .sc-o:active,.sask-box .sc-o:focus-visible{border-color:var(--cer);background:rgba(0,123,167,.18)}
+.sask-box .sc-o.alw:active,.sask-box .sc-o.alw:focus-visible{border-color:var(--rose);background:rgba(255,45,149,.14)}
+.sask-box .lnk{align-self:center;padding:10px}
 .scope{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 16px;padding:5px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
 .sc-o{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:14px;border:1px solid transparent;background:transparent;color:var(--soft);text-align:left;font:inherit;cursor:pointer;transition:background .2s,border-color .2s,color .2s}
 .sc-o b{display:block;font-size:15px;color:inherit}.sc-o small{display:block;font-size:11.5px;color:var(--muted);margin-top:1px}
@@ -2715,7 +2726,7 @@ function openPicker(mode, keep) {
   if (!keep) pk = {q: "", g: "", eq: mode === "browse" ? "" : (S.state.profile.equip === "academia" ? "" : S.state.profile.equip), post: false, mode, open: "", also: false};
   const eqChips = [["", "Todos"], ["academia", "Academia"], ["halteres", "Halteres"], ["elasticos", "Elásticos"], ["corpo", "Corpo"]];
   openSheet(mode === "browse" ? "Biblioteca" : mode === "live" ? "Adicionar ao treino" : "Adicionar exercício",
-    `${mode === "live" ? scopeSeg(pk.also, "pkAlso", "pkAlso") : ""}
+    `
      <input id="pk-q" data-f="pq" value="${esc(pk.q)}" placeholder="Buscar exercício…" autocomplete="off" aria-label="Buscar exercício">
      <p class="flt-l">Grupo</p><div class="chips" id="pkG">${["", ...GROUPS].map(g => `<button class="chip" data-a="pg" data-g="${esc(g)}">${g || "Todos"}</button>`).join("")}</div>
      <p class="flt-l">Equipamento</p><div class="chips" id="pkE">${eqChips.map(([k, l]) => `<button class="chip" data-a="pe" data-e="${k}">${l}</button>`).join("")}<button class="chip rs" data-a="pp" id="pkP">◇ Foco postural</button></div>
@@ -2742,7 +2753,21 @@ function renderPickList() {
 
 /* ============ troca rápida ============ */
 let swapCtx = null, swapAlso = false;
-/* seletor grande "Só hoje / Sempre" usado na troca e no adicionar durante o treino */
+/* pop-up "Só hoje / Sempre": aparece ao confirmar troca ou adição durante o treino */
+let scopeCb = null;
+function askScope(verb, name, cb) {
+  scopeCb = cb;
+  let el = document.getElementById("scopeAsk");
+  if (!el) { el = document.createElement("div"); el.id = "scopeAsk"; el.className = "sask"; document.body.appendChild(el);
+    el.addEventListener("click", ev => { const b = ev.target.closest("[data-sk]"); if (ev.target === el || (b && b.dataset.sk === "x")) return closeScope(); if (b) { const f = scopeCb; closeScope(); f && f(b.dataset.sk === "1"); } }); }
+  el.innerHTML = `<div class="sask-box" role="dialog" aria-modal="true" aria-labelledby="saskT">
+    <p class="kicker">${esc(verb)}</p><h3 id="saskT">${esc(name)}</h3><p class="meta">Onde aplicar essa mudança?</p>
+    <button class="sc-o" data-sk="0"><span class="sc-ic" aria-hidden="true">◷</span><span><b>Só hoje</b><small>Vale só para este treino</small></span></button>
+    <button class="sc-o alw" data-sk="1"><span class="sc-ic" aria-hidden="true">↻</span><span><b>Em todos os treinos</b><small>Salva na ficha</small></span></button>
+    <button class="lnk mut" data-sk="x">Cancelar</button></div>`;
+  el.classList.add("on"); setTimeout(() => { const f = el.querySelector("[data-sk='0']"); f && f.focus(); }, 30);
+}
+function closeScope() { const el = document.getElementById("scopeAsk"); if (el) el.classList.remove("on"); scopeCb = null; }
 const scopeSeg = (always, act, id) => `<div class="scope" id="${id}" role="radiogroup" aria-label="Onde aplicar a mudança">
   <button class="sc-o ${!always ? "on" : ""}" role="radio" aria-checked="${!always}" data-a="${act}" data-s="0"><span class="sc-ic" aria-hidden="true">◷</span><span><b>Só hoje</b><small>Só neste treino</small></span></button>
   <button class="sc-o ${always ? "on" : ""}" role="radio" aria-checked="${always}" data-a="${act}" data-s="1"><span class="sc-ic" aria-hidden="true">↻</span><span><b>Sempre</b><small>Salva na ficha</small></span></button></div>`;
@@ -2757,7 +2782,7 @@ function openSwap(ctx, i) {
   const row = x => `<div class="li">${demoBox(x.name, x.group, false)}<div class="li-main"><b>${esc(x.name)}</b><span class="li-tags">${esc(x.group)} · ${EQTAG[x.equip]}${x.avoid.some(a => pains(p).includes(a)) ? " · <i>atenção à dor</i>" : ""}</span></div><button class="li-add" data-a="swapTo" data-n="${esc(x.name)}" aria-label="Trocar por ${esc(x.name)}">⇄</button></div>`;
   openSheet("Trocar exercício",
     `<p class="kicker">Substituindo</p><h3>${esc(cur.name)}</h3>
-     ${ctx === "live" ? scopeSeg(swapAlso, "swapScope", "swapSc") : ""}
+
      ${alts.length ? `<p class="flt-l">Mesmo movimento</p><div class="lib">${alts.map(row).join("")}</div>` : ""}
      ${same.length ? `<p class="flt-l">Mesmo grupo · ${esc(cur.group)}</p><div class="lib">${same.slice(0, 8).map(row).join("")}</div>` : ""}
      <button class="b w" data-a="swapLib">Ver biblioteca completa</button>`, "", ctx === "edit" ? "editor" : "close");
@@ -3388,6 +3413,7 @@ const actions = {
   pkAlso: b => { pk.also = b.dataset.s === "1"; document.querySelectorAll("#pkAlso .sc-o").forEach(c => { const on = c.dataset.s === b.dataset.s; c.classList.toggle("on", on); c.setAttribute("aria-checked", on); }); },
   addLiveEx: b => {
     if (!active) return;
+    if (!b.scoped) { const d = {...b.dataset}; return askScope("Adicionar ao treino", d.n, all => { pk.also = all; actions.addLiveEx({dataset: d, scoped: true}); }); }
     const L = b.dataset.c ? null : byName(b.dataset.n);
     const r = L ? mkFromLib(L, null, S.state.profile) : {id: uid(), name: b.dataset.n, group: "Outro", pattern: "", sets: 3, reps: "10-12", load: "", rest: 60, note: ""};
     if (/^Prancha/.test(r.name)) { r.reps = "30-40s"; r.rest = 45; } else if (L && L.group === "Cardio") { r.sets = 1; r.reps = "10 min"; r.rest = 30; } else if (L && L.group === "Mobilidade") { r.sets = 2; r.reps = "10"; r.rest = 20; }
@@ -3407,7 +3433,7 @@ const actions = {
   swapEd: b => openSwap("edit", +b.dataset.i),
   swapLive: b => { swapAlso = false; openSwap("live", +b.dataset.i); },
   swapScope: b => { swapAlso = b.dataset.s === "1"; document.querySelectorAll("#swapSc .sc-o").forEach(c => { const on = c.dataset.s === b.dataset.s; c.classList.toggle("on", on); c.setAttribute("aria-checked", on); }); },
-  swapTo: b => applySwap(b.dataset.n),
+  swapTo: b => { const n = b.dataset.n; if (swapCtx && swapCtx.ctx === "live") askScope("Trocar por", n, all => { swapAlso = all; applySwap(n); }); else applySwap(n); },
   swapLib: () => openPicker("swap"),
   saveRoutine: () => saveRoutine(),
   review: () => aiReview(),
@@ -3593,7 +3619,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261119000920";</script>
+<script>window.SL_VERSION = "20261119001415";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
