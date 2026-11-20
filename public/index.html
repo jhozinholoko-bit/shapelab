@@ -303,6 +303,21 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(51,191,24
 .sets{display:flex;flex-direction:column;gap:7px}
 .sets-h,.srow{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(0,1fr) 50px;gap:10px;align-items:center}
 .sets-h span{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);text-align:center}
+.evo-rail{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:4px -4px 0;padding:2px 4px 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.evo-rail::-webkit-scrollbar{display:none}
+.evo-c{flex:0 0 100%;scroll-snap-align:center;border-radius:18px;border:1px solid var(--line);background:rgba(0,0,0,.18);padding:12px 12px 6px;min-width:0}
+.evo-ch{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+.evo-ch b{font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evo-d{flex:none;font:500 11px var(--f-mono);letter-spacing:.06em;color:var(--muted)}
+.evo-d.up{color:var(--good)}.evo-d.dn{color:var(--rose-hi)}
+.evo-dots{display:flex;justify-content:center;gap:6px;margin-top:6px}
+.evo-dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.2);transition:width .25s}
+.evo-dots i.on{width:18px;border-radius:3px;background:linear-gradient(90deg,var(--cer-hi),var(--rose))}
+.evo-hint{text-align:center;margin:6px 0 0;font:500 10.5px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.evo-hint b{color:var(--cer-hi);font-weight:500}
+.hist-btn{margin-top:14px;justify-content:center;gap:10px}
+.hist-n{font:500 11px var(--f-mono);padding:2px 8px;border-radius:999px;background:rgba(51,191,240,.15);color:var(--cer-hi)}
+.back-l{display:inline-block;margin:0 0 4px -6px;font-size:14px}
 .grp-list{display:flex;flex-direction:column;gap:10px;margin-bottom:6px}
 .grp{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 16px;text-align:left;width:100%;color:inherit;font:inherit}
 .grp-av{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font:600 19px var(--f-disp);color:#fff;background:linear-gradient(135deg,var(--cer),var(--rose))}
@@ -817,6 +832,7 @@ img{max-width:100%}
     <section id="v-historico" hidden></section>
     <section id="v-galeria" hidden></section>
     <section id="v-coach" hidden></section>
+    <section id="v-diario" hidden></section>
   </main>
 </div>
 
@@ -830,8 +846,8 @@ img{max-width:100%}
 
 <nav class="dock" aria-label="Seções">
   <div class="dock-in" id="dock">
-    <button class="dk on" data-a="tab" data-t="fichas"><span class="mono">01</span>Fichas</button>
-    <button class="dk" data-a="tab" data-t="treino"><span class="mono">02</span>Treino<i class="live" id="liveDot" hidden></i></button>
+    <button class="dk on" data-a="tab" data-t="treino"><span class="mono">01</span>Treino<i class="live" id="liveDot" hidden></i></button>
+    <button class="dk" data-a="tab" data-t="fichas"><span class="mono">02</span>Fichas</button>
     <button class="dk" data-a="tab" data-t="historico"><span class="mono">03</span>Evolução</button>
     <button class="dk" data-a="tab" data-t="galeria"><span class="mono">04</span>Grupos</button>
     
@@ -2026,13 +2042,14 @@ function tick() {
 setInterval(tick, 1000);
 
 /* ============ navegação ============ */
-const TABS = ["fichas", "treino", "historico", "galeria"];
-let tab = "fichas";
+const TABS = ["treino", "fichas", "historico", "galeria", "coach", "diario"];
+let tab = "treino";
 function setTab(t) {
   if (!TABS.includes(t)) t = "fichas";
   tab = t;
-  document.querySelectorAll(".dk").forEach(b => b.classList.toggle("on", b.dataset.t === t));
-  const ind = $("#dkInd"); ind.style.setProperty("--i", TABS.indexOf(t)); ind.classList.toggle("rose", t === "coach");
+  const dt = t === "diario" ? "treino" : t; // o histórico fica dentro de Treino
+  document.querySelectorAll(".dk").forEach(b => b.classList.toggle("on", b.dataset.t === dt));
+  const ind = $("#dkInd"); ind.style.setProperty("--i", TABS.indexOf(dt)); ind.classList.toggle("rose", t === "coach");
   TABS.forEach(v => $("#v-" + v).hidden = v !== t);
   renderCurrent(); window.scrollTo(0, 0); { const sh = document.querySelector(".shell"); if (sh) sh.scrollTop = 0; }
 }
@@ -2049,6 +2066,7 @@ function renderCurrent() {
   else if (tab === "treino") renderTreino();
   else if (tab === "historico") renderHistorico();
   else if (tab === "galeria") renderGaleria();
+  else if (tab === "diario") renderDiario();
   else renderCoach();
   tick(); paintDemos();
 }
@@ -2274,7 +2292,7 @@ function resetAll() {
   for (const s of S.sessions.slice()) removeSession(s.id);
   loadPhotos().then(ps => { for (const p of ps.slice()) { if (S.mode === "cloud") enqueue(() => S.stateRef.collection("photos").doc(p.id).delete()); } PHOTOS = []; LS.del("fv_photos"); });
   S.state = null; ensureState(); S.state.profile.name = ""; saveState();
-  active = null; saveActive(); rest = null; saveRest(); chat = []; gateStep = 0; tab = "fichas";
+  active = null; saveActive(); rest = null; saveRest(); chat = []; gateStep = 0; tab = "treino";
   closeSheet(); toast("Tudo apagado. Vamos começar de novo."); renderCurrent();
 }
 
@@ -2315,13 +2333,13 @@ async function addPhoto(file) {
     else LS.set("fv_photos", PHOTOS);
     toast("Foto salva");
     if (ctx.sessionId) openSess(ctx.sessionId);
-    if (tab === "galeria") renderGaleria();
+    if (tab === "diario") renderDiario();
   } catch { toast("Não consegui salvar essa foto. Tente outra imagem."); }
 }
 async function delPhoto(id) {
   await loadPhotos(); PHOTOS = PHOTOS.filter(p => p.id !== id);
   if (S.mode === "cloud") enqueue(() => S.stateRef.collection("photos").doc(id).delete()); else LS.set("fv_photos", PHOTOS);
-  toast("Foto apagada"); if (photoCtx && photoCtx.sessionId) openSess(photoCtx.sessionId); else closeSheet(); if (tab === "galeria") renderGaleria();
+  toast("Foto apagada"); if (photoCtx && photoCtx.sessionId) openSess(photoCtx.sessionId); else closeSheet(); if (tab === "diario") renderDiario();
 }
 function lineChart(P, unit) {
   if (P.length < 2) return `<p class="meta">Registre pelo menos 2 vezes para ver a curva.${P.length ? ` Atual: ${fmt(P[0].v)} ${unit}.` : ""}</p>`;
@@ -2358,7 +2376,7 @@ async function openMeasures() {
        <div class="mf-grid">${MF.map(([k, l, u]) => `<label>${l} (${u()})<input id="m-${k}" inputmode="decimal" placeholder="—"></label>`).join("")}</div>
        <p class="meta">Preencha só o que quiser acompanhar. Meça sempre no mesmo horário, de preferência de manhã.</p>
        <button class="b b-pri w" data-a="mSave">Salvar registro</button><p id="mErr" class="err" hidden></p></div>
-     <button class="b w" data-a="tab" data-t="galeria">Fotos de progresso ficam na aba Galeria ›</button>
+     <button class="b w" data-a="tab" data-t="diario">Fotos de progresso ficam no histórico de treino ›</button>
      ${ms.length ? `<div class="pnl blk"><p class="kicker">Histórico</p>${ms.map(m => `<div class="mrow"><span>${new Date(m.date + "T12:00").toLocaleDateString("pt-BR")}</span><span class="vals">${MF.filter(([k]) => m[k] !== "" && m[k] != null).map(([k, l, u]) => `${l} ${fmt(m[k])}${u()}`).join(" · ")}</span><button class="lnk bad" data-a="mDel" data-id="${m.id}">${mArm === m.id ? "Confirmar" : "Apagar"}</button></div>`).join("")}</div>` : ""}`, "", "close", true);
 }
 
@@ -2448,12 +2466,16 @@ function postToGroup(sessId, inv) {
   try { sessionStorage.setItem("sl_gdraft", JSON.stringify({title: x.routineName, minutes: String(x.durationMin || ""), sets: String((x.exercises || []).reduce((t, e) => t + e.sets.length, 0) || "")})); } catch {}
   location.href = "/g/" + g;
 }
-async function renderGaleria() {
-  const v = $("#v-galeria");
+function renderGaleria() {
   if (MYGROUPS === null) loadGroups().then(() => { if (tab === "galeria") renderGaleria(); });
-  if (!PHOTOS) v.innerHTML = `<div class="sh"><div class="sh-t"><p class="kicker">Treinar <em>junto</em></p><h1>Grupos</h1></div></div>${groupsHtml()}<p class="kicker caret">Carregando</p>`;
+  $("#v-galeria").innerHTML = `<div class="sh"><div class="sh-t"><p class="kicker">Treinar <em>junto</em></p><h1>Grupos</h1></div></div>${groupsHtml()}`;
+}
+async function renderDiario() {
+  const v = $("#v-diario");
+  const head = `<button class="lnk mut back-l" data-a="tab" data-t="treino">‹ Treino</button>`;
+  if (!PHOTOS) v.innerHTML = `${head}<div class="sh"><div class="sh-t"><p class="kicker">Seus treinos e <em>fotos</em></p><h1>Histórico</h1></div></div><p class="kicker caret">Carregando</p>`;
   const photos = await loadPhotos();
-  if (tab !== "galeria") return;
+  if (tab !== "diario") return;
   const ss = S.sessions;
   const bySess = {}; photos.forEach(p => { if (p.sessionId && !bySess[p.sessionId]) bySess[p.sessionId] = p; });
   const first = photos[photos.length - 1], latest = photos[0];
@@ -2477,8 +2499,7 @@ async function renderGaleria() {
   }
   const groups = {};
   ss.forEach(x => { const k = new Date(x.date).toLocaleDateString("pt-BR", {month: "long", year: "numeric"}); (groups[k] = groups[k] || []).push(x); });
-  v.innerHTML = `<div class="sh"><div class="sh-t"><p class="kicker">Treinar <em>junto</em></p><h1>Grupos</h1></div></div>${groupsHtml()}
-    <div class="sh" style="margin-top:26px"><div class="sh-t"><p class="kicker">Seus treinos e <em>fotos</em></p><h2 class="h2d">Diário</h2></div><span class="kicker"><b>${ss.length}</b> treino${ss.length === 1 ? "" : "s"} · <b>${photos.length}</b> foto${photos.length === 1 ? "" : "s"}</span></div>
+  v.innerHTML = `${head}<div class="sh"><div class="sh-t"><p class="kicker">Seus treinos e <em>fotos</em></p><h1>Histórico</h1></div><span class="kicker"><b>${ss.length}</b> treino${ss.length === 1 ? "" : "s"} · <b>${photos.length}</b> foto${photos.length === 1 ? "" : "s"}</span></div>
     ${cmp}
     ${ss.length ? Object.entries(groups).map(([m, list]) => `<p class="flt-l" style="margin:10px 0 10px">${esc(m)}</p><div class="stack" style="margin-bottom:14px">${list.map(x => {
       const ph = bySess[x.id], nSets = (x.exercises || []).reduce((t, e) => t + e.sets.length, 0);
@@ -3236,9 +3257,10 @@ function renderTreino() {
     const rs = S.state.routines.filter(r => r.exercises.length);
     const lastS = S.sessions.find(x => rs.some(r => r.id === x.routineId));
     const nextId = rs.length > 1 && lastS ? rs[(rs.findIndex(r => r.id === lastS.routineId) + 1) % rs.length].id : rs.length ? rs[0].id : null;
-    v.innerHTML = `<div class="sh"><div class="sh-t"><p class="kicker">[02] <b>Sessão</b> de hoje</p><h1>Escolha a ficha</h1></div></div>` +
+    v.innerHTML = `<div class="sh"><div class="sh-t"><p class="kicker"><b>Sessão</b> de hoje</p><h1>Escolha a ficha</h1></div></div>` +
       (rs.length ? rs.map(r => `<button class="pick-r" data-a="start" data-id="${r.id}"><span class="glyph" aria-hidden="true">${letter(S.state.routines.indexOf(r))}</span><span class="mid"><b>${esc(r.name)}</b><small>${r.id === nextId && rs.length > 1 ? `<b style="color:var(--rose-hi)">PRÓXIMA NA ORDEM</b> · ` : ""}${r.exercises.length} EXERCÍCIOS · ~${estMin(r)} MIN</small></span><span class="go">INICIAR ▸</span></button>`).join("")
-        : `<div class="pnl hero"><p class="lede">Você ainda não tem fichas. Faça a calibragem para gerar um plano em 1 minuto.</p><button class="b b-pri w" data-a="quiz">▸ Iniciar calibragem</button></div>`);
+        : `<div class="pnl hero"><p class="lede">Você ainda não tem fichas. Faça a calibragem para gerar um plano em 1 minuto.</p><button class="b b-pri w" data-a="quiz">▸ Iniciar calibragem</button></div>`)
+      + (S.sessions.length ? `<button class="b w hist-btn" data-a="tab" data-t="diario">◷ Abrir histórico de treino <span class="hist-n">${S.sessions.length}</span></button>` : "");
     return;
   }
   const A = active;
@@ -3708,9 +3730,19 @@ function renderHistorico() {
   ss.forEach(s => (s.exercises || []).forEach(e => { const g = e.group || (byName(e.name) || {}).group; if (g === "Mobilidade" || g === "Cardio") return; if (e.sets.some(x => x.load > 0)) cnt[e.name] = (cnt[e.name] || 0) + 1; }));
   const names = Object.keys(cnt).filter(n => cnt[n] >= 2).sort((a, b) => cnt[b] - cnt[a]);
   if (!names.includes(evoEx)) evoEx = names[0] || "";
-  if (names.length) h += `<div class="pnl blk evo"><div><p class="kicker">Sua força em cada exercício</p><p class="meta" style="margin-top:4px">A maior carga que você usou em cada treino. Se a linha sobe, você está ficando mais forte.</p></div><label class="fld"><span>Exercício</span><select id="evoSel" data-f="evo">${names.map(n => `<option ${n === evoEx ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label><div id="evoChart">${evoChart(evoEx)}</div></div>`;
-  h += `<button class="b w" data-a="tab" data-t="galeria">Ver histórico de treinos (aba Grupos) ›</button>`;
+  if (names.length) h += `<div class="pnl blk evo"><div><p class="kicker">Sua força em cada exercício</p><p class="meta" style="margin-top:4px">A maior carga que você usou em cada treino. Se a linha sobe, você está ficando mais forte.</p></div><div class="evo-rail" id="evoRail">${names.map(n => evoCard(n)).join("")}</div>
+    ${names.length > 1 ? `<div class="evo-dots" id="evoDots" aria-hidden="true">${names.map((n, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div><p class="evo-hint">Deslize para ver os outros · <b id="evoN">1</b>/${names.length}</p>` : ""}</div>`;
+  h += `<button class="b w" data-a="tab" data-t="diario">Abrir histórico de treino ›</button>`;
   $("#v-historico").innerHTML = h;
+  const rail = $("#evoRail");
+  if (rail) rail.addEventListener("scroll", () => { const w = rail.firstElementChild ? rail.firstElementChild.offsetWidth + 10 : 1, i = Math.round(rail.scrollLeft / w);
+    document.querySelectorAll("#evoDots i").forEach((d, k) => d.classList.toggle("on", k === i)); const n = $("#evoN"); if (n) n.textContent = i + 1; }, {passive: true});
+}
+/* card de um exercício no carrossel de força */
+function evoCard(name) {
+  const loads = [...S.sessions].reverse().map(s => (s.exercises || []).find(e => e.name === name)).filter(e => e && e.sets.length).map(e => Math.max(...e.sets.map(x => Number(x.load) || 0)));
+  const d = loads.length > 1 ? loads[loads.length - 1] - loads[0] : 0;
+  return `<article class="evo-c"><div class="evo-ch"><b>${esc(name)}</b>${d ? `<span class="evo-d ${d > 0 ? "up" : "dn"}">${d > 0 ? "▲ +" : "▼ "}${fmt(d)}${U()}</span>` : `<span class="evo-d">= estável</span>`}</div>${evoChart(name)}</article>`;
 }
 function evoChart(name) {
   const P = [];
@@ -4065,7 +4097,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261119223541";</script>
+<script>window.SL_VERSION = "20261119224338";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
