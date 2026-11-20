@@ -3324,7 +3324,7 @@ const STK = {d: null, i: 0, phrase: 0, logo: null, ready: null};
 function stkData(s, prs, after) {
   const parts = String(s.routineName || "Treino").split(" · ");
   const sets = s.exercises.reduce((t, e) => t + e.sets.length, 0), d = new Date(s.date);
-  return {main: parts[0], sub: parts.slice(1).join(" · "), min: s.durationMin, ex: s.exercises.length, sets, vol: s.volume > 0 ? s.volume : 0, unit: U(),
+  return {main: parts[0], sub: parts.slice(1).join(" · "), min: s.durationMin, ex: s.exercises.length, sets, vol: 0 /* volume não entra nos stickers */, unit: U(),
     prs: prs || [], streak: after && after.streak > 0 ? after.streak : 0, date: `${d.getDate()} ${STK_MES[d.getMonth()]} ${d.getFullYear()}`, dateS: `${d.getDate()} ${STK_MES[d.getMonth()]}`};
 }
 const stkVol = d => [Math.round(d.vol).toLocaleString("pt-BR"), d.unit];
@@ -3403,7 +3403,7 @@ const STK_T = [
       stkShadow(c, false);
     } },
   { id: "dash", name: "Painel",
-    size: d => { const rows = Math.ceil(stkMetrics(d).length / 2); return [1080, 352 + (d.sub ? 44 : 0) + rows * 214 + (d.streak || d.prs.length ? 110 : 50)]; },
+    size: d => { const nm = stkMetrics(d).length, rows = nm === 3 ? 1 : Math.ceil(nm / 2); return [1080, 352 + (d.sub ? 44 : 0) + rows * 214 + (d.streak || d.prs.length ? 110 : 50)]; },
     draw(c, d, W, H) {
       stkCard(c, 24, 24, W - 48, H - 48, 60);
       stkLogo(c, 76, 70, 62);
@@ -3411,12 +3411,12 @@ const STK_T = [
       c.fillStyle = STK_C.muted; stkSpaced(c, d.date, W - 80, 110, 4, "right");
       let y = 222; c.fillStyle = "#fff"; stkFit(c, d.main, 700, STK_F.disp, W - 160, 76, 36); c.fillText(d.main, 80, y);
       if (d.sub) { c.font = stkFont(500, 34, STK_F.ui); c.fillStyle = STK_C.soft; c.fillText(d.sub, 82, y + 48); y += 44; }
-      const m = stkMetrics(d), gx = 80, gy = y + 60, tw = (W - 160 - 24) / 2, th = 190;
+      const m = stkMetrics(d), cols = m.length === 3 ? 3 : 2, gx = 80, gy = y + 60, tw = (W - 160 - 24 * (cols - 1)) / cols, th = 190;
       m.forEach((it, i) => {
-        const full = m.length === 3 && i === 2, x = gx + (full ? 0 : (i % 2) * (tw + 24)), yy = gy + Math.floor(i / 2) * (th + 24), w = full ? W - 160 : tw;
+        const x = gx + (i % cols) * (tw + 24), yy = gy + Math.floor(i / cols) * (th + 24), w = tw;
         stkRR(c, x, yy, w, th, 32); c.fillStyle = "rgba(255,255,255,.05)"; c.fill(); c.lineWidth = 2; c.strokeStyle = "rgba(255,255,255,.09)"; c.stroke();
-        stkIcon(c, it.k, x + 30, yy + 30, 38, i % 2 ? STK_C.roseHi : STK_C.cerHi);
-        c.font = stkFont(500, 22, STK_F.mono); c.fillStyle = STK_C.muted; stkSpaced(c, it.l, x + 84, yy + 57, 4);
+        stkIcon(c, it.k, x + 28, yy + 28, 36, i % 2 ? STK_C.roseHi : STK_C.cerHi);
+        c.font = stkFont(500, cols === 3 ? 19 : 22, STK_F.mono); c.fillStyle = STK_C.muted; stkSpaced(c, it.l, x + (cols === 3 ? 74 : 84), yy + 55, cols === 3 ? 2 : 4);
         c.font = stkFont(700, 72, STK_F.disp); c.fillStyle = "#fff"; c.fillText(it.v, x + 30, yy + th - 34);
         if (it.u) { const vw = c.measureText(it.v).width; c.font = stkFont(500, 30, STK_F.mono); c.fillStyle = STK_C.soft; c.fillText(it.u, x + 30 + vw + 12, yy + th - 36); }
       });
@@ -4065,7 +4065,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261119223300";</script>
+<script>window.SL_VERSION = "20261119223541";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
