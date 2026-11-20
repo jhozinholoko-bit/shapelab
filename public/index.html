@@ -303,6 +303,24 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(51,191,24
 .sets{display:flex;flex-direction:column;gap:7px}
 .sets-h,.srow{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(0,1fr) 50px;gap:10px;align-items:center}
 .sets-h span{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);text-align:center}
+.stk{margin:22px -4px 4px;display:flex;flex-direction:column;gap:10px}
+.stk-h{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px}.stk-n{font:500 11px var(--f-mono);color:var(--muted);letter-spacing:.1em}
+.stk-rail{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 9% 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.stk-rail::-webkit-scrollbar{display:none}
+.stk-s{flex:0 0 82%;margin:0;scroll-snap-align:center;display:flex;flex-direction:column;gap:8px;opacity:.55;transform:scale(.94);transition:opacity .25s,transform .25s}
+.stk-s.on{opacity:1;transform:none}
+.stk-bg{aspect-ratio:4/5;border-radius:22px;display:grid;place-items:center;padding:16px;border:1px solid var(--line);
+  background:radial-gradient(70% 60% at 30% 20%,rgba(51,191,240,.18),transparent 70%),radial-gradient(60% 50% at 80% 90%,rgba(255,45,149,.16),transparent 70%),
+  repeating-conic-gradient(rgba(255,255,255,.035) 0 25%,transparent 0 50%) 0 0/22px 22px,#0d1016}
+.stk-bg canvas{max-width:100%;max-height:100%;width:auto;height:auto;display:block}
+.stk-s figcaption{text-align:center;font:500 11px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+.stk-dots{display:flex;justify-content:center;gap:7px}
+.stk-dots button{width:7px;height:7px;padding:0;border-radius:50%;border:0;background:rgba(255,255,255,.2);transition:width .25s,background .25s}
+.stk-dots button.on{width:22px;border-radius:4px;background:linear-gradient(90deg,var(--cer-hi),var(--rose))}
+.stk-ph{align-self:center;margin:-2px 0}
+.stk-act{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:8px;padding:0 4px}
+.stk-act .b{padding:13px 6px;font-size:13.5px;white-space:nowrap;min-width:0}
+.stk-tip{text-align:center;font-size:12.5px;margin:0;padding:0 8px}
 .rv-sum{margin:0 0 12px}
 .li.rv .li-main b{display:flex;gap:8px;align-items:baseline}
 .rv-n{font:500 11px var(--f-mono);color:var(--muted);letter-spacing:.06em}
@@ -3243,6 +3261,310 @@ Responda somente JSON: [{"name":"nome exato","load":42.5,"why":"motivo em até 8
       : `<span class="tagx">IA</span><p>Ainda não há histórico suficiente para sugerir cargas. Registre este treino e na próxima vez eu sugiro.</p>`;
   } catch (e) { if (e && e.code !== "cancelled") out.innerHTML = `<span class="tagx">IA</span><p class="err">${esc(aiErr(e))}</p>`; }
 }
+/* ============ STICKERS: compartilhar meu treino ============
+   Cada modelo = {id, name, size(d) -> [w,h], draw(c, d, w, h)}. Tudo desenhado em <canvas> com fundo transparente;
+   a prévia é o próprio canvas exportado, então o PNG sai idêntico ao que aparece na tela. */
+const STK_F = {disp: '"Unbounded","Outfit",sans-serif', ui: '"Outfit",system-ui,sans-serif', mono: '"JetBrains Mono",ui-monospace,monospace'};
+const STK_C = {cer: "#007BA7", cerHi: "#33BFF0", rose: "#FF2D95", roseHi: "#FF6CB6", fg: "#EEF6FA", soft: "#C3D2DA", muted: "#8392A0", card: "rgba(9,11,16,.88)"};
+const STK_MES = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+const STK_PHRASES = [["TREINO", "PAGO!"], ["MISSÃO", "CUMPRIDA!"], ["MAIS UM", "PRA CONTA!"], ["SHAPE", "EM OBRA"], ["FÓRMULA", "APLICADA"], ["EXPERIMENTO", "CONCLUÍDO"], ["SUOR", "INVESTIDO"]];
+const STK = {d: null, i: 0, phrase: 0, logo: null, ready: null};
+
+/* ---------- dados reais da sessão ---------- */
+function stkData(s, prs, after) {
+  const parts = String(s.routineName || "Treino").split(" · ");
+  const sets = s.exercises.reduce((t, e) => t + e.sets.length, 0), d = new Date(s.date);
+  return {main: parts[0], sub: parts.slice(1).join(" · "), min: s.durationMin, ex: s.exercises.length, sets, vol: s.volume > 0 ? s.volume : 0, unit: U(),
+    prs: prs || [], streak: after && after.streak > 0 ? after.streak : 0, date: `${d.getDate()} ${STK_MES[d.getMonth()]} ${d.getFullYear()}`, dateS: `${d.getDate()} ${STK_MES[d.getMonth()]}`};
+}
+const stkVol = d => d.unit === "kg" && d.vol >= 1000 ? [(d.vol / 1000).toLocaleString("pt-BR", {maximumFractionDigits: 1}), "t"] : [Math.round(d.vol).toLocaleString("pt-BR"), d.unit];
+
+/* ---------- utilitários de desenho ---------- */
+const stkFont = (w, s, f) => `${w} ${s}px ${f}`;
+function stkRR(c, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function stkGrad(c, x0, y0, x1, y1, a = STK_C.cerHi, b = STK_C.rose) { const g = c.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, a); g.addColorStop(1, b); return g; }
+function stkFit(c, t, w, f, maxW, max, min = 12) { let s = max; for (; s > min; s -= 2) { c.font = stkFont(w, s, f); if (c.measureText(t).width <= maxW) break; } c.font = stkFont(w, s, f); return s; }
+function stkShadow(c, on, k = 1) { c.shadowColor = on ? `rgba(0,0,0,${.5 * k})` : "transparent"; c.shadowBlur = on ? 24 * k : 0; c.shadowOffsetY = on ? 4 * k : 0; }
+/* texto com espaçamento entre letras (letterSpacing não existe em todo navegador) */
+function stkSpaced(c, t, x, y, sp, align = "left") {
+  const chars = [...t], ws = chars.map(ch => c.measureText(ch).width), total = ws.reduce((a, b) => a + b, 0) + sp * (chars.length - 1);
+  let cx = align === "center" ? x - total / 2 : align === "right" ? x - total : x;
+  const prev = c.textAlign; c.textAlign = "left";
+  chars.forEach((ch, i) => { c.fillText(ch, cx, y); cx += ws[i] + sp; });
+  c.textAlign = prev; return total;
+}
+function stkSpacedW(c, t, sp) { return [...t].reduce((a, ch) => a + c.measureText(ch).width, 0) + sp * ([...t].length - 1); }
+/* quebra o nome em até 2 linhas, diminuindo a fonte até caber */
+function stkWrap(c, t, w, f, maxW, max, min = 28) {
+  for (let s = max; s >= min; s -= 2) {
+    c.font = stkFont(w, s, f);
+    if (c.measureText(t).width <= maxW) return {s, lines: [t]};
+    const words = t.split(" ");
+    for (let k = words.length - 1; k > 0; k--) { const a = words.slice(0, k).join(" "), b = words.slice(k).join(" "); if (c.measureText(a).width <= maxW && c.measureText(b).width <= maxW) return {s, lines: [a, b]}; }
+  }
+  c.font = stkFont(w, min, f); return {s: min, lines: [t]};
+}
+function stkCard(c, x, y, w, h, r) {
+  c.save(); stkRR(c, x, y, w, h, r); c.fillStyle = STK_C.card; c.shadowColor = "rgba(0,0,0,.35)"; c.shadowBlur = 30; c.shadowOffsetY = 8; c.fill(); c.restore();
+  c.save(); stkRR(c, x, y, w, h, r); c.clip();
+  const g = c.createRadialGradient(x + w * .1, y, 0, x + w * .1, y, w * .9); g.addColorStop(0, "rgba(51,191,240,.16)"); g.addColorStop(1, "rgba(51,191,240,0)"); c.fillStyle = g; c.fillRect(x, y, w, h);
+  const g2 = c.createRadialGradient(x + w, y + h, 0, x + w, y + h, w * .8); g2.addColorStop(0, "rgba(255,45,149,.14)"); g2.addColorStop(1, "rgba(255,45,149,0)"); c.fillStyle = g2; c.fillRect(x, y, w, h);
+  c.restore();
+  c.save(); stkRR(c, x + 1.5, y + 1.5, w - 3, h - 3, r); c.lineWidth = 3; c.strokeStyle = stkGrad(c, x, y, x + w, y + h, "rgba(51,191,240,.75)", "rgba(255,45,149,.75)"); c.stroke(); c.restore();
+}
+function stkLogo(c, x, y, s) { if (STK.logo) c.drawImage(STK.logo, x, y, s, s); }
+const STK_FLAME = "M25 2c3 11 17 18 17 35a18 18 0 0 1-36 0c0-9 5-15 9-19 0 7 3 11 7 12-3-11-1-20 3-28z";
+function stkFlame(c, x, y, h) { const k = h / 62; c.save(); c.translate(x, y); c.scale(k, k); c.fillStyle = stkGrad(c, 0, 62, 14, 0, STK_C.rose, "#7FDBFF"); c.fill(new Path2D(STK_FLAME)); c.restore(); }
+function stkStar(c, cx, cy, r, fill) { c.save(); c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } c.closePath(); c.fillStyle = fill; c.fill(); c.restore(); }
+function stkSpark(c, cx, cy, r, fill) { c.save(); c.beginPath(); c.moveTo(cx, cy - r); c.quadraticCurveTo(cx, cy, cx + r, cy); c.quadraticCurveTo(cx, cy, cx, cy + r); c.quadraticCurveTo(cx, cy, cx - r, cy); c.quadraticCurveTo(cx, cy, cx, cy - r); c.fillStyle = fill; c.fill(); c.restore(); }
+/* ícones de traço simples */
+function stkIcon(c, kind, x, y, s, col) {
+  c.save(); c.translate(x, y); c.scale(s / 24, s / 24); c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 2; c.lineCap = "round"; c.lineJoin = "round"; c.beginPath();
+  if (kind === "clock") { c.arc(12, 12, 9, 0, Math.PI * 2); c.moveTo(12, 7); c.lineTo(12, 12); c.lineTo(15.5, 14); }
+  else if (kind === "ex") { c.moveTo(6, 12); c.lineTo(18, 12); stkRR(c, 2.5, 8, 3.5, 8, 1.2); c.stroke(); c.beginPath(); stkRR(c, 18, 8, 3.5, 8, 1.2); c.stroke(); c.beginPath(); c.moveTo(6, 12); c.lineTo(18, 12); }
+  else if (kind === "sets") { c.moveTo(4, 7); c.lineTo(20, 7); c.moveTo(4, 12); c.lineTo(20, 12); c.moveTo(4, 17); c.lineTo(14, 17); }
+  else if (kind === "vol") { c.arc(12, 15, 6.5, 0, Math.PI * 2); c.moveTo(8.5, 9.5); c.quadraticCurveTo(8, 4, 12, 4); c.quadraticCurveTo(16, 4, 15.5, 9.5); }
+  c.stroke(); c.restore();
+}
+function stkMetrics(d) {
+  const m = [{k: "clock", l: "DURAÇÃO", v: String(d.min), u: "min"}, {k: "ex", l: "EXERCÍCIOS", v: String(d.ex), u: ""}, {k: "sets", l: "SÉRIES", v: String(d.sets), u: ""}];
+  if (d.vol) { const [v, u] = stkVol(d); m.push({k: "vol", l: "VOLUME", v, u}); }
+  return m;
+}
+
+/* ---------- os 6 modelos ---------- */
+const STK_T = [
+  { id: "minimal", name: "Minimalista",
+    size: d => [1080, d.sub ? 640 : 580],
+    draw(c, d, W, H) {
+      stkShadow(c, true);
+      stkLogo(c, 56, 40, 64);
+      c.font = stkFont(500, 26, STK_F.mono); c.fillStyle = STK_C.fg; c.textBaseline = "alphabetic";
+      stkSpaced(c, `SHAPELAB  ·  ${d.date}`, 132, 82, 5);
+      const n = stkWrap(c, d.main.toUpperCase(), 700, STK_F.disp, 968, 104, 48);
+      let y = 140 + n.s * .95; c.fillStyle = "#fff";
+      n.lines.forEach((l, i) => { c.font = stkFont(700, n.s, STK_F.disp); c.fillText(l, 56, y + i * n.s * 1.05); });
+      y += (n.lines.length - 1) * n.s * 1.05;
+      if (d.sub) { c.font = stkFont(500, 40, STK_F.ui); c.fillStyle = STK_C.soft; c.fillText(d.sub, 60, y + 60); y += 60; }
+      const ny = H - 70;
+      c.font = stkFont(700, 210, STK_F.disp); const nw = c.measureText(String(d.min)).width;
+      c.fillStyle = stkGrad(c, 56, ny - 180, 56 + nw, ny, STK_C.cerHi, STK_C.rose); c.fillText(String(d.min), 50, ny);
+      c.font = stkFont(500, 52, STK_F.mono); c.fillStyle = "#fff"; c.fillText("MIN", 50 + nw + 22, ny - 8);
+      stkShadow(c, false);
+    } },
+  { id: "dash", name: "Painel",
+    size: d => { const rows = Math.ceil(stkMetrics(d).length / 2); return [1080, 352 + (d.sub ? 44 : 0) + rows * 214 + (d.streak || d.prs.length ? 110 : 50)]; },
+    draw(c, d, W, H) {
+      stkCard(c, 24, 24, W - 48, H - 48, 60);
+      stkLogo(c, 76, 70, 62);
+      c.textBaseline = "alphabetic"; c.font = stkFont(500, 24, STK_F.mono); c.fillStyle = STK_C.cerHi; stkSpaced(c, "TREINO CONCLUÍDO", 154, 110, 5);
+      c.fillStyle = STK_C.muted; stkSpaced(c, d.date, W - 80, 110, 4, "right");
+      let y = 222; c.fillStyle = "#fff"; stkFit(c, d.main, 700, STK_F.disp, W - 160, 76, 36); c.fillText(d.main, 80, y);
+      if (d.sub) { c.font = stkFont(500, 34, STK_F.ui); c.fillStyle = STK_C.soft; c.fillText(d.sub, 82, y + 48); y += 44; }
+      const m = stkMetrics(d), gx = 80, gy = y + 60, tw = (W - 160 - 24) / 2, th = 190;
+      m.forEach((it, i) => {
+        const full = m.length === 3 && i === 2, x = gx + (full ? 0 : (i % 2) * (tw + 24)), yy = gy + Math.floor(i / 2) * (th + 24), w = full ? W - 160 : tw;
+        stkRR(c, x, yy, w, th, 32); c.fillStyle = "rgba(255,255,255,.05)"; c.fill(); c.lineWidth = 2; c.strokeStyle = "rgba(255,255,255,.09)"; c.stroke();
+        stkIcon(c, it.k, x + 30, yy + 30, 38, i % 2 ? STK_C.roseHi : STK_C.cerHi);
+        c.font = stkFont(500, 22, STK_F.mono); c.fillStyle = STK_C.muted; stkSpaced(c, it.l, x + 84, yy + 57, 4);
+        c.font = stkFont(700, 72, STK_F.disp); c.fillStyle = "#fff"; c.fillText(it.v, x + 30, yy + th - 34);
+        if (it.u) { const vw = c.measureText(it.v).width; c.font = stkFont(500, 30, STK_F.mono); c.fillStyle = STK_C.soft; c.fillText(it.u, x + 30 + vw + 12, yy + th - 36); }
+      });
+      if (d.streak || d.prs.length) {
+        const fy = H - 92; let fx = 80;
+        c.fillStyle = "rgba(255,255,255,.09)"; c.fillRect(80, fy - 52, W - 160, 2);
+        c.font = stkFont(500, 26, STK_F.mono);
+        if (d.streak) { stkFlame(c, fx, fy - 30, 40); c.fillStyle = "#fff"; fx += 46 + stkSpaced(c, `OFENSIVA ${d.streak}`, fx + 42, fy, 4) + 50; }
+        if (d.prs.length) { stkStar(c, fx + 16, fy - 10, 18, STK_C.rose); c.fillStyle = "#fff"; stkSpaced(c, `${d.prs.length} ${d.prs.length > 1 ? "RECORDES" : "RECORDE"}`, fx + 44, fy, 4); }
+      }
+    } },
+  { id: "type", name: "Tipográfico",
+    size: () => [1080, 900],
+    draw(c, d, W, H) {
+      const [a, b] = STK_PHRASES[STK.phrase % STK_PHRASES.length];
+      c.save(); c.translate(W / 2, 400); c.rotate(-5 * Math.PI / 180); c.textAlign = "center"; c.textBaseline = "alphabetic";
+      const s1 = stkFit(c, a, 700, STK_F.disp, 880, 180, 60);
+      stkShadow(c, true, .8); c.lineWidth = 6; c.strokeStyle = "#fff"; c.lineJoin = "round"; c.strokeText(a, 0, -40);
+      stkShadow(c, false);
+      const s2 = stkFit(c, b, 700, STK_F.disp, 980, 200, 60), w2 = c.measureText(b).width;
+      stkShadow(c, true, .8); c.fillStyle = stkGrad(c, -w2 / 2, 0, w2 / 2, 0, STK_C.cerHi, STK_C.rose); c.fillText(b, 0, s2 * .95 - 10); stkShadow(c, false);
+      c.restore();
+      stkSpark(c, 120, 150, 34, STK_C.rose); stkSpark(c, 960, 560, 26, STK_C.cerHi); stkSpark(c, 1000, 130, 16, "#fff");
+      /* selo + dados */
+      const info = [d.main.toUpperCase(), `${d.min} MIN`, `${d.sets} SÉRIES`].join("  ·  ");
+      c.font = stkFont(500, 30, STK_F.mono); const iw = Math.min(W - 120, stkSpacedW(c, info, 4) + 72);
+      const px = (W - iw) / 2, py = 700;
+      stkRR(c, px, py, iw, 84, 42); c.fillStyle = STK_C.card; c.fill(); c.lineWidth = 3; c.strokeStyle = stkGrad(c, px, 0, px + iw, 0, "rgba(51,191,240,.8)", "rgba(255,45,149,.8)"); c.stroke();
+      c.fillStyle = "#fff"; stkFit(c, info, 500, STK_F.mono, iw - 80, 30, 18); stkSpaced(c, info, W / 2, py + 53, 4, "center");
+      c.font = stkFont(500, 22, STK_F.mono); stkShadow(c, true); c.fillStyle = STK_C.fg; stkSpaced(c, `SHAPELAB · ${d.date}`, W / 2, py + 140, 6, "center"); stkShadow(c, false);
+    } },
+  { id: "perf", name: "Performance",
+    size: d => [1000, d.vol ? 1220 : 960],
+    draw(c, d, W, H) {
+      c.textBaseline = "alphabetic"; stkShadow(c, true);
+      stkRR(c, 52, 60, 12, H - 120, 6); c.fillStyle = stkGrad(c, 0, 60, 0, H - 60); c.fill();
+      c.font = stkFont(500, 26, STK_F.mono); c.fillStyle = STK_C.fg; stkSpaced(c, `PERFORMANCE  ·  ${d.dateS}`, 110, 100, 5);
+      c.fillStyle = "#fff"; stkFit(c, d.main + (d.sub ? ` · ${d.sub}` : ""), 600, STK_F.ui, W - 160, 50, 28); c.fillText(d.main + (d.sub ? ` · ${d.sub}` : ""), 110, 166);
+      const block = (label, val, unit, y, size, grad) => {
+        c.font = stkFont(500, 24, STK_F.mono); c.fillStyle = STK_C.fg; stkSpaced(c, label, 112, y, 6);
+        c.font = stkFont(700, size, STK_F.disp); const w = c.measureText(val).width;
+        c.fillStyle = grad ? stkGrad(c, 110, y, 110 + w, y + size, STK_C.cerHi, STK_C.rose) : "#fff"; c.fillText(val, 104, y + size * .92);
+        if (unit) { c.font = stkFont(500, Math.round(size * .22), STK_F.mono); c.fillStyle = STK_C.soft; c.fillText(unit, 104 + w + 18, y + size * .9); }
+      };
+      block("TEMPO TOTAL", String(d.min), "MIN", 250, 230, true);
+      stkShadow(c, false); c.fillStyle = "rgba(255,255,255,.18)"; c.fillRect(112, 540, W - 200, 2); stkShadow(c, true);
+      const half = (W - 200) / 2;
+      [["EXERCÍCIOS", d.ex], ["SÉRIES", d.sets]].forEach(([l, v], i) => {
+        const x = 112 + i * half;
+        c.font = stkFont(500, 24, STK_F.mono); c.fillStyle = STK_C.fg; stkSpaced(c, l, x, 610, 6);
+        c.font = stkFont(700, 150, STK_F.disp); c.fillStyle = "#fff"; c.fillText(String(v), x - 6, 760);
+      });
+      if (d.vol) {
+        stkShadow(c, false); c.fillStyle = "rgba(255,255,255,.18)"; c.fillRect(112, 820, W - 200, 2); stkShadow(c, true);
+        const [v, u] = stkVol(d); block("VOLUME LEVANTADO", v, u, 890, 190, false);
+      }
+      stkShadow(c, false);
+    } },
+  { id: "medal", name: "Conquista",
+    size: () => [1000, 1090],
+    draw(c, d, W, H) {
+      const cx = W / 2, cy = 470, R = 360;
+      /* fitas */
+      const tail = (dir, col) => { c.save(); c.beginPath(); const x0 = cx + dir * 70; c.moveTo(x0 - 80, cy + 200); c.lineTo(x0 + 80, cy + 200); c.lineTo(x0 + 80 + dir * 70, cy + R + 240); c.lineTo(x0 + dir * 70, cy + R + 180); c.lineTo(x0 - 80 + dir * 70, cy + R + 240); c.closePath(); c.fillStyle = col; c.shadowColor = "rgba(0,0,0,.35)"; c.shadowBlur = 20; c.fill(); c.restore(); };
+      tail(-1, stkGrad(c, 0, cy, 0, cy + 600, "#0B6E95", STK_C.cer)); tail(1, stkGrad(c, 0, cy, 0, cy + 600, "#C21F72", STK_C.rose));
+      /* medalha */
+      c.save(); c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.fillStyle = STK_C.card; c.shadowColor = "rgba(0,0,0,.45)"; c.shadowBlur = 40; c.shadowOffsetY = 10; c.fill(); c.restore();
+      c.save(); c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.clip(); const rg = c.createRadialGradient(cx, cy - R * .6, 0, cx, cy - R * .6, R * 1.4); rg.addColorStop(0, "rgba(51,191,240,.22)"); rg.addColorStop(1, "rgba(51,191,240,0)"); c.fillStyle = rg; c.fillRect(cx - R, cy - R, R * 2, R * 2); c.restore();
+      c.beginPath(); c.arc(cx, cy, R - 9, 0, Math.PI * 2); c.lineWidth = 18; c.strokeStyle = stkGrad(c, cx - R, cy - R, cx + R, cy + R); c.stroke();
+      for (let i = 0; i < 72; i++) { const a = i / 72 * Math.PI * 2, r1 = R - 42, r2 = R - (i % 6 ? 52 : 62); c.beginPath(); c.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); c.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); c.lineWidth = i % 6 ? 2 : 3; c.strokeStyle = i % 6 ? "rgba(255,255,255,.18)" : "rgba(255,255,255,.45)"; c.stroke(); }
+      stkLogo(c, cx - 70, cy - 250, 140);
+      c.textAlign = "center"; c.textBaseline = "alphabetic";
+      c.font = stkFont(500, 26, STK_F.mono); c.fillStyle = STK_C.cerHi; stkSpaced(c, "TREINO CONCLUÍDO", cx, cy - 70, 6, "center");
+      const n = stkWrap(c, d.main, 700, STK_F.disp, 520, 70, 34); c.fillStyle = "#fff";
+      n.lines.forEach((l, i) => { c.font = stkFont(700, n.s, STK_F.disp); c.fillText(l, cx, cy + 10 + i * n.s * 1.1); });
+      c.font = stkFont(500, 28, STK_F.mono); c.fillStyle = STK_C.soft; stkSpaced(c, `${d.min} MIN  ·  ${d.sets} SÉRIES`, cx, cy + 40 + n.lines.length * n.s * 1.1, 4, "center");
+      /* faixa da conquista: só o que foi registrado de verdade */
+      let big, small, ic = null;
+      if (d.prs.length) { const p = d.prs[0]; big = d.prs.length > 1 ? `${d.prs.length} NOVOS RECORDES` : "NOVO RECORDE"; small = `${p.name} · ${fmt(p.now)} ${d.unit}`; ic = "star"; }
+      else if (d.streak >= 2) { big = `OFENSIVA DE ${d.streak}`; small = "treinos seguidos na meta"; ic = "flame"; }
+      else if (d.streak === 1) { big = "OFENSIVA ACESA"; small = "primeiro treino da sequência"; ic = "flame"; }
+      else { big = "MISSÃO CUMPRIDA"; small = d.date; }
+      const by = cy + R - 40, bw = 760, bh = 150, bx = cx - bw / 2;
+      c.save(); stkRR(c, bx, by, bw, bh, 75); c.fillStyle = stkGrad(c, bx, 0, bx + bw, 0, STK_C.cer, STK_C.rose); c.shadowColor = "rgba(0,0,0,.4)"; c.shadowBlur = 30; c.shadowOffsetY = 8; c.fill(); c.restore();
+      c.font = stkFont(700, 40, STK_F.disp); const bwT = c.measureText(big).width, off = ic ? 34 : 0;
+      if (ic === "star") stkStar(c, cx - bwT / 2 - 18 + off - 30, by + 60, 22, "#fff");
+      if (ic === "flame") stkFlame(c, cx - bwT / 2 + off - 66, by + 32, 46);
+      c.fillStyle = "#fff"; c.fillText(big, cx + off, by + 74);
+      stkFit(c, small, 500, STK_F.ui, bw - 100, 32, 20); c.fillStyle = "rgba(255,255,255,.92)"; c.fillText(small, cx, by + 118);
+      c.textAlign = "left";
+    } },
+  { id: "compact", name: "Compacto",
+    size: d => { const cv = document.createElement("canvas").getContext("2d"); cv.font = stkFont(700, 52, STK_F.disp); const w = Math.max(cv.measureText(d.main).width, 380); return [Math.min(1080, Math.round(w + 420)), 300]; },
+    draw(c, d, W, H) {
+      c.save(); c.translate(W / 2, H / 2); c.rotate(-2.5 * Math.PI / 180); c.translate(-W / 2, -H / 2);
+      const bx = 130, by = 70, bw = W - 170, bh = 160;
+      c.save(); stkRR(c, bx, by, bw, bh, 80); c.fillStyle = STK_C.card; c.shadowColor = "rgba(0,0,0,.4)"; c.shadowBlur = 26; c.shadowOffsetY = 6; c.fill(); c.restore();
+      stkRR(c, bx + 1.5, by + 1.5, bw - 3, bh - 3, 80); c.lineWidth = 3; c.strokeStyle = stkGrad(c, bx, 0, bx + bw, 0, "rgba(51,191,240,.7)", "rgba(255,45,149,.7)"); c.stroke();
+      /* selo redondo com o frasco */
+      const cx = 140, cy = H / 2, r = 104;
+      c.save(); c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fillStyle = "#0B0E14"; c.shadowColor = "rgba(0,0,0,.45)"; c.shadowBlur = 24; c.fill(); c.restore();
+      c.beginPath(); c.arc(cx, cy, r - 6, 0, Math.PI * 2); c.lineWidth = 10; c.strokeStyle = stkGrad(c, cx - r, cy - r, cx + r, cy + r); c.stroke();
+      stkLogo(c, cx - 66, cy - 70, 132);
+      c.textBaseline = "alphabetic"; c.fillStyle = "#fff"; const tx = 272, maxT = W - tx - 90;
+      stkFit(c, d.main, 700, STK_F.disp, maxT, 52, 28); c.fillText(d.main, tx, by + 74);
+      const info = d.vol ? `${d.min} MIN  ·  ${stkVol(d).join(" ")}` : `${d.min} MIN  ·  ${d.sets} SÉRIES`;
+      c.font = stkFont(500, 28, STK_F.mono); c.fillStyle = STK_C.cerHi; stkSpaced(c, info, tx + 2, by + 122, 4);
+      /* check */
+      const kx = W - 60, ky = by + 4;
+      c.beginPath(); c.arc(kx, ky, 30, 0, Math.PI * 2); c.fillStyle = STK_C.rose; c.fill();
+      c.beginPath(); c.moveTo(kx - 12, ky + 1); c.lineTo(kx - 3, ky + 10); c.lineTo(kx + 13, ky - 9); c.lineWidth = 6; c.lineCap = "round"; c.lineJoin = "round"; c.strokeStyle = "#fff"; c.stroke();
+      c.restore();
+    } }
+];
+
+/* ---------- carregar fontes e o frasco antes de desenhar ---------- */
+function stkPrepare() {
+  if (STK.ready) return STK.ready;
+  const fonts = document.fonts ? Promise.all(["700 80px Unbounded", "600 40px Outfit", "500 40px Outfit", "500 30px 'JetBrains Mono'"].map(f => document.fonts.load(f).catch(() => {}))) : Promise.resolve();
+  const logo = new Promise(res => {
+    try {
+      const defs = (document.querySelector("#slLiquid") || {}).parentNode;
+      const svg = symbol(512).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ').replace('aria-hidden="true">', `aria-hidden="true"><defs>${defs ? defs.innerHTML : ""}</defs>`);
+      const im = new Image(); im.onload = () => { STK.logo = im; res(); }; im.onerror = () => res();
+      im.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    } catch { res(); }
+  });
+  STK.ready = Promise.race([Promise.all([fonts, logo]), new Promise(r => setTimeout(r, 2500))]);
+  return STK.ready;
+}
+function stkRender(i) {
+  const t = STK_T[i], cv = document.getElementById("stkC" + i); if (!cv || !STK.d) return;
+  const [w, h] = t.size(STK.d); cv.width = w; cv.height = h;
+  const c = cv.getContext("2d"); c.clearRect(0, 0, w, h); c.save(); t.draw(c, STK.d, w, h); c.restore();
+}
+async function stkRenderAll() { await stkPrepare(); STK_T.forEach((_, i) => stkRender(i)); }
+
+/* ---------- seção na tela de conclusão ---------- */
+function stkSection(d) {
+  STK.d = d; STK.i = 0; STK.phrase = Math.floor(Math.random() * STK_PHRASES.length);
+  return `<section class="stk" aria-label="Compartilhar meu treino">
+    <div class="stk-h"><p class="kicker">Compartilhar <b>meu treino</b></p><span class="stk-n num" id="stkN">1/${STK_T.length}</span></div>
+    <div class="stk-rail" id="stkRail">${STK_T.map((t, i) => `<figure class="stk-s" data-i="${i}"><div class="stk-bg"><canvas id="stkC${i}" role="img" aria-label="Sticker ${t.name}"></canvas></div><figcaption>${t.name}</figcaption></figure>`).join("")}</div>
+    <div class="stk-dots" id="stkDots">${STK_T.map((t, i) => `<button class="${i ? "" : "on"}" data-a="stkGo" data-i="${i}" aria-label="Modelo ${t.name}"></button>`).join("")}</div>
+    <button class="lnk stk-ph" id="stkPh" data-a="stkPhrase" hidden>↻ Outra frase</button>
+    <div class="stk-act"><button class="b" data-a="stkCopy">⧉ Copiar</button><button class="b" data-a="stkSave">↓ Salvar PNG</button><button class="b b-rose" data-a="stkShare">↗ Compartilhar</button></div>
+    <p class="meta stk-tip">No iPhone: copie e cole direto no Story do Instagram. O fundo é transparente.</p>
+  </section>`;
+}
+function stkMount() {
+  const rail = document.getElementById("stkRail"); if (!rail) return;
+  stkRenderAll();
+  let raf = 0;
+  rail.addEventListener("scroll", () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => {
+    const s = rail.querySelector(".stk-s"); if (!s) return;
+    const i = Math.max(0, Math.min(STK_T.length - 1, Math.round(rail.scrollLeft / (s.offsetWidth + 12))));
+    if (i !== STK.i) { STK.i = i; stkSync(); }
+  }); }, {passive: true});
+  stkSync();
+}
+function stkSync() {
+  document.querySelectorAll("#stkDots button").forEach((b, k) => b.classList.toggle("on", k === STK.i));
+  document.querySelectorAll("#stkRail .stk-s").forEach((f, k) => f.classList.toggle("on", k === STK.i));
+  const n = document.getElementById("stkN"); if (n) n.textContent = `${STK.i + 1}/${STK_T.length}`;
+  const ph = document.getElementById("stkPh"); if (ph) ph.hidden = STK_T[STK.i].id !== "type";
+}
+function stkGo(i) { const rail = document.getElementById("stkRail"), s = rail && rail.children[i]; if (!s) return; rail.scrollTo({left: s.offsetLeft - rail.offsetLeft - (rail.clientWidth - s.offsetWidth) / 2, behavior: "smooth"}); STK.i = i; stkSync(); }
+const stkCanvas = () => document.getElementById("stkC" + STK.i);
+const stkBlob = () => new Promise((res, rej) => { const cv = stkCanvas(); if (!cv) return rej(new Error("sem sticker")); cv.toBlob(b => b ? res(b) : rej(new Error("falha ao gerar PNG")), "image/png"); });
+const stkFile = b => new File([b], `shapelab-${slug(STK.d.main)}-${STK_T[STK.i].id}.png`, {type: "image/png"});
+async function stkCopy() {
+  try {
+    if (!navigator.clipboard || !window.ClipboardItem) throw new Error("unsupported");
+    await navigator.clipboard.write([new ClipboardItem({"image/png": stkBlob()})]); // a promessa é passada direto: o Safari exige isso dentro do toque
+    toast("Sticker copiado. Cole no Story ou na conversa.");
+  } catch (e) {
+    toast(e && e.message === "unsupported" ? "Este navegador não copia imagem. Use Salvar ou Compartilhar." : "Não consegui copiar. Use Salvar ou Compartilhar.");
+  }
+}
+async function stkShareFile(fromSave) {
+  let b; try { b = await stkBlob(); } catch { toast("Não consegui gerar o PNG."); return false; }
+  const f = stkFile(b);
+  if (navigator.canShare && navigator.canShare({files: [f]})) {
+    try { await navigator.share({files: [f], title: "Meu treino · ShapeLab"}); return true; }
+    catch (e) { if (e && e.name === "AbortError") return true; if (!fromSave) toast("Não consegui abrir o compartilhamento."); return false; }
+  }
+  if (!fromSave) toast("Compartilhar arquivo não funciona neste navegador. Use Salvar PNG.");
+  return false;
+}
+async function stkSave() {
+  const iOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (iOS && await stkShareFile(true)) return; // no iPhone, "Salvar imagem" fica na folha de compartilhamento
+  let b; try { b = await stkBlob(); } catch { toast("Não consegui gerar o PNG."); return; }
+  const url = URL.createObjectURL(b), a = document.createElement("a");
+  a.href = url; a.download = stkFile(b).name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
 function finishWorkout() {
   const skippedNames = active.ex.filter(e => e.skipped).map(e => e.name);
   const exercises = active.ex.filter(e => !e.skipped).map(e => ({name: e.name, group: e.group, sets: e.sets.filter(s => s.done).map(s => ({load: num(s.load) === "" ? 0 : num(s.load), reps: parseInt(s.reps) || 0}))})).filter(e => e.sets.length);
@@ -3270,8 +3592,10 @@ function finishWorkout() {
      ${extended ? `<div class="pnl blk" style="align-items:center;text-align:center;gap:6px">${flame(ms ? 64 : 44)}<p class="ms">${ms ? "Marco desbloqueado" : "Ofensiva +1"}</p><p class="st-num">${after.streak}<span>${after.streak === 1 ? "treino" : "treinos"}</span></p><p class="st-msg ${after.cls}">${esc(after.streak === 1 ? "Sua ofensiva acendeu! Cumpra sua meta semanal para mantê-la acesa." : after.msg)}</p></div>`
        : `<p class="st-msg ${after.cls}" style="text-align:center">${after.trainedToday ? "Hoje já tinha contado na ofensiva. Treino extra registrado." : esc(after.msg)}</p>`}
      <div class="readouts"><div class="pnl ro"><small>Duração</small><b>${s.durationMin}<span>min</span></b></div><div class="pnl ro"><small>Séries</small><b>${nSets}</b></div><div class="pnl ro"><small>Volume</small><b>${fmtBig(s.volume)}<span>${U()}</span></b></div></div>
-     ${prs.length ? `<div class="pnl rose-edge ai-out"><span class="tagx">REC</span><h3>Novos recordes</h3><ul>${prs.map(p => `<li>${esc(p.name)} ▸ ${fmt(p.prev)} → <b style="color:var(--rose-hi)">${fmt(p.now)}${U()}</b></li>`).join("")}</ul></div>` : `<p class="meta">Treino salvo no Diário. Depois, se quiser, abra ele lá e adicione uma foto.</p>`}`,
+     ${prs.length ? `<div class="pnl rose-edge ai-out"><span class="tagx">REC</span><h3>Novos recordes</h3><ul>${prs.map(p => `<li>${esc(p.name)} ▸ ${fmt(p.prev)} → <b style="color:var(--rose-hi)">${fmt(p.now)}${U()}</b></li>`).join("")}</ul></div>` : `<p class="meta">Treino salvo no Diário. Depois, se quiser, abra ele lá e adicione uma foto.</p>`}
+     ${stkSection(stkData(s, prs, extended ? after : (after.streak > 0 ? after : null)))}`,
     `<button class="b b-pri" data-a="sheetBack">Fechar</button>`);
+  stkMount();
 }
 
 /* ============ EVOLUÇÃO ============ */
@@ -3423,6 +3747,11 @@ const actions = {
   aiUse: () => { if (aiResult) openEditor(null, {...aiResult, id: uid()}); },
   rview: b => { rv.open = ""; openRView(b.dataset.id); },
   rvOpen: b => { rv.open = rv.open === b.dataset.k ? "" : b.dataset.k; const s = $("#sheetBody").scrollTop; openRView(rv.id); $("#sheetBody").scrollTop = s; },
+  stkGo: b => stkGo(+b.dataset.i),
+  stkPhrase: () => { STK.phrase++; stkRender(STK_T.findIndex(t => t.id === "type")); },
+  stkCopy: () => stkCopy(),
+  stkSave: () => stkSave(),
+  stkShare: () => stkShareFile(false),
   tune: () => { tune.plan = null; openTune(); },
   tuneG: b => { const g = b.dataset.g, i = tune.sel.indexOf(g); if (i >= 0) tune.sel.splice(i, 1); else { if (tune.sel.length >= 3) { toast("Escolha até 3 músculos"); return; } tune.sel.push(g); } tune.plan = 1; openTune(); },
   tuneM: b => { tune.mode = b.dataset.m; tune.plan = 1; openTune(); },
@@ -3651,7 +3980,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261119001617";</script>
+<script>window.SL_VERSION = "20261119215441";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
