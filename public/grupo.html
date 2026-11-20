@@ -25,7 +25,7 @@
 html,body{margin:0;background:var(--void);color:var(--fg);font-family:var(--f-ui);font-size:15.5px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow-x:hidden;-webkit-text-size-adjust:100%}
 body{min-height:100dvh;background:radial-gradient(90% 50% at 10% -10%,rgba(0,123,167,.22),transparent 60%),radial-gradient(70% 40% at 100% 0%,rgba(255,45,149,.12),transparent 60%),var(--void) fixed}
 button,input,textarea{font:inherit;color:inherit}
-button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 input,textarea{font-size:16px!important}
 .wrap{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 110px)}
 .top{display:flex;align-items:center;gap:10px;min-height:52px;margin-bottom:8px}
@@ -75,6 +75,7 @@ textarea.inp{resize:none;min-height:80px}
 .rx{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--glass);font-size:15px}
 .rx span{font:500 12px var(--f-mono);color:var(--soft)}
 .rx.on{border-color:var(--rose);background:rgba(255,45,149,.14)}
+.rx{transition:transform .15s}.rx:active{transform:scale(.9)}
 .empty{padding:28px 18px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}
 /* ranking */
 .seg{display:flex;gap:6px;margin-bottom:12px}
@@ -323,8 +324,9 @@ const ACT = {
   },
   react: async b => {
     const p = F.posts.find(x => x.id === b.dataset.id), e = b.dataset.e; if (!p) return;
-    const on = !p.mine.includes(e); p.mine = on ? p.mine.concat(e) : p.mine.filter(x => x !== e); p.reacts[e] += on ? 1 : -1; render();
-    try { await api("g_react", {p_post: p.id, p_emoji: e}); } catch (err) { p.mine = on ? p.mine.filter(x => x !== e) : p.mine.concat(e); p.reacts[e] += on ? -1 : 1; render(); toast(errMsg(err)); }
+    const paint = () => { const on = p.mine.includes(e), n = p.reacts[e]; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); b.innerHTML = `${e}${n ? `<span>${n}</span>` : ""}`; };
+    const on = !p.mine.includes(e); p.mine = on ? p.mine.concat(e) : p.mine.filter(x => x !== e); p.reacts[e] += on ? 1 : -1; paint(); // só o botão muda: a página não pula nem recarrega as fotos
+    try { await api("g_react", {p_post: p.id, p_emoji: e}); } catch (err) { p.mine = on ? p.mine.filter(x => x !== e) : p.mine.concat(e); p.reacts[e] += on ? -1 : 1; paint(); toast(errMsg(err)); }
   },
   postMenu: b => openSheet(`<div class="sh-top"><h3>Post</h3><button class="ic-b" data-a="close" aria-label="Fechar">✕</button></div><div class="menu"><button class="mi bad" data-a="delPost" data-id="${b.dataset.id}">🗑 <span>Apagar post</span></button></div>`),
   delPost: async b => { try { await api("g_del_post", {p_post: b.dataset.id}); closeSheet(); await loadFeed(); toast("Post apagado"); } catch (e) { toast(errMsg(e)); } },
