@@ -2450,6 +2450,7 @@ async function openSess(id) {
         <div class="grid2"><button class="b" data-a="phPick">Trocar foto</button><button class="b b-bad" data-a="phDel" data-id="${ph.id}">Remover foto</button></div>`
        : `<p class="kicker">Foto deste dia</p><p class="meta">Tirou uma foto depois desse treino? Adicione aqui para entrar no seu antes × depois.</p><button class="b b-pri w" data-a="phPick">+ Adicionar foto</button>`}
        <input type="file" id="phFile" accept="image/*" hidden></div>
+     <button class="b b-rose w" data-a="sessStk" data-id="${x.id}">↗ Compartilhar este treino</button>
      <div class="pnl blk" style="gap:6px"><p class="kicker">O que você fez</p>
        ${(x.exercises || []).map(e => `<div class="mrow"><span style="font-family:var(--f-ui);font-size:14px;color:var(--fg);white-space:normal">${esc(e.name)}</span><span class="vals" style="text-align:right">${e.sets.map(z => `${fmt(z.load)}×${z.reps}`).join(" · ")}</span></div>`).join("")}
        ${x.skipped && x.skipped.length ? `<p class="meta">Pulados: ${esc(x.skipped.join(", "))}</p>` : ""}</div>
@@ -3565,6 +3566,15 @@ async function stkSave() {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
+let stkSessId = null;
+/* stickers de um treino já salvo: recordes recalculados a partir do histórico; ofensiva da época não é conhecida, então fica de fora */
+function openSessStickers(id) {
+  const x = S.sessions.find(z => z.id === id); if (!x) return;
+  stkSessId = id;
+  const prs = (x.exercises || []).map(e => { const prev = bestFor(e.name, x.date), now = Math.max(0, ...e.sets.map(z => z.load)); return prev > 0 && now > prev ? {name: e.name, prev, now} : null; }).filter(Boolean);
+  openSheet("Compartilhar treino", stkSection(stkData(x, prs, null)), "", "sess", true);
+  stkMount();
+}
 function finishWorkout() {
   const skippedNames = active.ex.filter(e => e.skipped).map(e => e.name);
   const exercises = active.ex.filter(e => !e.skipped).map(e => ({name: e.name, group: e.group, sets: e.sets.filter(s => s.done).map(s => ({load: num(s.load) === "" ? 0 : num(s.load), reps: parseInt(s.reps) || 0}))})).filter(e => e.sets.length);
@@ -3748,6 +3758,7 @@ const actions = {
   rview: b => { rv.open = ""; openRView(b.dataset.id); },
   rvOpen: b => { rv.open = rv.open === b.dataset.k ? "" : b.dataset.k; const s = $("#sheetBody").scrollTop; openRView(rv.id); $("#sheetBody").scrollTop = s; },
   stkGo: b => stkGo(+b.dataset.i),
+  sessStk: b => openSessStickers(b.dataset.id),
   stkPhrase: () => { STK.phrase++; stkRender(STK_T.findIndex(t => t.id === "type")); },
   stkCopy: () => stkCopy(),
   stkSave: () => stkSave(),
@@ -3764,7 +3775,7 @@ const actions = {
     tune.plan = null; saveState(); closeSheet(); renderFichas(); toast("Fichas aprimoradas");
   },
   tuneUndo: () => { const b = S.state.tuneBak; if (!b) return; S.state.routines = b.routines; S.state.profile.focusGroups = b.focus; delete S.state.tuneBak; saveState(); renderFichas(); toast("Aprimoramento desfeito"); },
-  sheetBack: () => { if (sheetBack === "editor" && draft) renderEditor(); else if (sheetBack === "swap" && swapCtx) openSwap(swapCtx.ctx, swapCtx.i); else if (sheetBack === "rview" && rv.id) openRView(rv.id); else if (sheetBack === "tune") { tune.plan = 1; openTune(); } else if (sheetBack === "picker") openPicker(pk.mode, true); else closeSheet(); },
+  sheetBack: () => { if (sheetBack === "editor" && draft) renderEditor(); else if (sheetBack === "swap" && swapCtx) openSwap(swapCtx.ctx, swapCtx.i); else if (sheetBack === "rview" && rv.id) openRView(rv.id); else if (sheetBack === "sess" && stkSessId) openSess(stkSessId); else if (sheetBack === "tune") { tune.plan = 1; openTune(); } else if (sheetBack === "picker") openPicker(pk.mode, true); else closeSheet(); },
   pick: () => openPicker("add"),
   pg: b => { pk.g = b.dataset.g; renderPickList(); },
   pe: b => { pk.eq = b.dataset.e; renderPickList(); },
@@ -3980,7 +3991,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261119215441";</script>
+<script>window.SL_VERSION = "20261119215824";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
