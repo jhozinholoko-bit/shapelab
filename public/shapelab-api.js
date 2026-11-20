@@ -139,11 +139,13 @@
   window.SL = {
     push: {setup: pushSetup, schedule: pushSchedule, active: () => PUSH.ready},
     name: () => store.get(K.name),
+    groups: {mine: () => rpc("g_mine", {p_token: token()}), create: name => rpc("g_create", {p_token: token(), p_name: name})},
     async logout() { try { await rpc("logout", {p_token: token()}); } catch {} [K.token, K.uid, K.name].forEach(store.del); clearAppData(); location.reload(); }
   };
 
   /* ---------- início do app ---------- */
   function startApp() {
+    try { const g = new URLSearchParams(location.search).get("g"); if (g && /^[a-z0-9]{4,32}$/.test(g)) { location.replace("/g/" + g); return; } } catch {} // veio de um convite de grupo
     const uid = store.get(K.uid);
     let last = null; try { last = localStorage.getItem(K.last); } catch {}
     if (last !== uid) { clearAppData(); try { localStorage.setItem(K.last, uid); } catch {} }

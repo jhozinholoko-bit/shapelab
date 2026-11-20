@@ -20,6 +20,14 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS sl_pin_failures (name_key TEXT NOT NULL, birth TEXT NOT NULL, at INTEGER NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS sl_pin_failures_lookup ON sl_pin_failures (name_key, birth, at)`,
   `CREATE TABLE IF NOT EXISTS sl_kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS sl_groups (id TEXT PRIMARY KEY, name TEXT NOT NULL, invite TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS sl_gmembers (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, user_id TEXT, token_hash TEXT, name TEXT NOT NULL, role TEXT NOT NULL, joined_at INTEGER NOT NULL)`,
+  `CREATE INDEX IF NOT EXISTS sl_gmembers_g ON sl_gmembers (group_id)`,
+  `CREATE INDEX IF NOT EXISTS sl_gmembers_u ON sl_gmembers (user_id)`,
+  `CREATE TABLE IF NOT EXISTS sl_gposts (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, member_id TEXT NOT NULL, created_at INTEGER NOT NULL, day TEXT NOT NULL, title TEXT, minutes INTEGER, sets INTEGER, note TEXT, photo_id TEXT)`,
+  `CREATE INDEX IF NOT EXISTS sl_gposts_g ON sl_gposts (group_id, created_at)`,
+  `CREATE TABLE IF NOT EXISTS sl_gphotos (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, type TEXT NOT NULL, data BLOB NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS sl_greacts (post_id TEXT NOT NULL, member_id TEXT NOT NULL, emoji TEXT NOT NULL, PRIMARY KEY (post_id, member_id, emoji))`,
   `CREATE TABLE IF NOT EXISTS sl_push (endpoint TEXT PRIMARY KEY, user_id TEXT NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at INTEGER NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS sl_push_user ON sl_push (user_id)`
 ];
@@ -91,7 +99,7 @@ const API = {
   async me(db, a) { const u = await uidOf(db, a.p_token); const r = await db.prepare("SELECT id, display_name FROM sl_users WHERE id = ?").bind(u).first(); return {user_id: r.id, name: r.display_name}; },
   async delete_account(db, a) {
     const u = await uidOf(db, a.p_token);
-    await db.batch(["sl_tokens", "sl_state", "sl_sessions", "sl_photos"].map(t => db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).bind(u)).concat(db.prepare("DELETE FROM sl_users WHERE id = ?").bind(u)));
+    await db.batch(["sl_tokens", "sl_state", "sl_sessions", "sl_photos", "sl_gmembers"].map(t => db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).bind(u)).concat(db.prepare("DELETE FROM sl_users WHERE id = ?").bind(u)));
     return true;
   },
   async get_state(db, a) {
@@ -229,15 +237,179 @@ const pushAPI = {
   }
 };
 
+
+/* ---------------- Grupos (estilo GymRats, só treino) ----------------
+   - Quem tem conta entra com o token normal. Quem não tem entra só com um nome e recebe um token de convidado,
+     que vale apenas para aquele grupo e fica guardado no aparelho.
+   - Só entra quem tem o link de convite. As fotos ficam no D1 e são servidas por um id aleatório. */
+const GEMOJI = ["🔥", "💪", "👏"];
+const dayOk = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ""));
+async function groupByInvite(db, invite) {
+  const g = await db.prepare("SELECT id, name, invite, created_at FROM sl_groups WHERE invite = ?").bind(String(invite || "").toLowerCase().slice(0, 32)).first();
+  if (!g) fail("group_not_found");
+  return g;
+}
+async function memberOf(db, a, g) {
+  if (a.p_token) {
+    const u = await uidOf(db, a.p_token);
+    const m = await db.prepare("SELECT id, name, role, user_id FROM sl_gmembers WHERE group_id = ? AND user_id = ?").bind(g.id, u).first();
+    if (m) return m;
+  }
+  if (a.p_gtoken) {
+    const m = await db.prepare("SELECT id, name, role, user_id FROM sl_gmembers WHERE group_id = ? AND token_hash = ?").bind(g.id, await sha256(String(a.p_gtoken))).first();
+    if (m) return m;
+  }
+  fail("not_member");
+}
+const newInvite = () => randHex(5);
+const GAPI = {
+  async g_create(db, a) {
+    const u = await uidOf(db, a.p_token), name = cleanName(a.p_name);
+    if (name.length < 2) fail("invalid_name");
+    const n = await db.prepare("SELECT COUNT(*) AS n FROM sl_gmembers WHERE user_id = ? AND role = 'owner'").bind(u).first();
+    if (n && n.n >= 20) fail("too_many_groups");
+    const me = await db.prepare("SELECT display_name FROM sl_users WHERE id = ?").bind(u).first();
+    const id = crypto.randomUUID(), invite = newInvite(), now = Date.now();
+    await db.batch([
+      db.prepare("INSERT INTO sl_groups (id, name, invite, created_at) VALUES (?, ?, ?, ?)").bind(id, name, invite, now),
+      db.prepare("INSERT INTO sl_gmembers (id, group_id, user_id, token_hash, name, role, joined_at) VALUES (?, ?, ?, NULL, ?, 'owner', ?)").bind(crypto.randomUUID(), id, u, me ? me.display_name : "Eu", now)
+    ]);
+    return {id, name, invite};
+  },
+  async g_mine(db, a) {
+    const u = await uidOf(db, a.p_token);
+    return (await db.prepare(`SELECT g.id, g.name, g.invite, m.role,
+        (SELECT COUNT(*) FROM sl_gmembers x WHERE x.group_id = g.id) AS members,
+        (SELECT MAX(created_at) FROM sl_gposts p WHERE p.group_id = g.id) AS last_post
+      FROM sl_gmembers m JOIN sl_groups g ON g.id = m.group_id WHERE m.user_id = ? ORDER BY COALESCE(last_post, g.created_at) DESC`).bind(u).all()).results;
+  },
+  async g_info(db, a) {
+    const g = await groupByInvite(db, a.p_invite);
+    const n = await db.prepare("SELECT COUNT(*) AS n FROM sl_gmembers WHERE group_id = ?").bind(g.id).first();
+    const o = await db.prepare("SELECT name FROM sl_gmembers WHERE group_id = ? AND role = 'owner'").bind(g.id).first();
+    return {name: g.name, invite: g.invite, members: n ? n.n : 0, owner: o ? o.name : ""};
+  },
+  async g_join(db, a) {
+    const g = await groupByInvite(db, a.p_invite), now = Date.now();
+    const n = await db.prepare("SELECT COUNT(*) AS n FROM sl_gmembers WHERE group_id = ?").bind(g.id).first();
+    if (n && n.n >= 100) fail("group_full");
+    if (a.p_token) {
+      const u = await uidOf(db, a.p_token);
+      const ex = await db.prepare("SELECT id FROM sl_gmembers WHERE group_id = ? AND user_id = ?").bind(g.id, u).first();
+      if (ex) return {member_id: ex.id};
+      const me = await db.prepare("SELECT display_name FROM sl_users WHERE id = ?").bind(u).first();
+      const id = crypto.randomUUID();
+      await db.prepare("INSERT INTO sl_gmembers (id, group_id, user_id, token_hash, name, role, joined_at) VALUES (?, ?, ?, NULL, ?, 'member', ?)").bind(id, g.id, u, me ? me.display_name : "Membro", now).run();
+      return {member_id: id};
+    }
+    const name = cleanName(a.p_name); if (name.length < 2) fail("invalid_name");
+    const t = randHex(24), id = crypto.randomUUID();
+    await db.prepare("INSERT INTO sl_gmembers (id, group_id, user_id, token_hash, name, role, joined_at) VALUES (?, ?, NULL, ?, ?, 'member', ?)").bind(id, g.id, await sha256(t), name, now).run();
+    return {member_id: id, gtoken: t};
+  },
+  async g_feed(db, a) {
+    const g = await groupByInvite(db, a.p_invite), me = await memberOf(db, a, g);
+    const before = parseInt(a.p_before) || Date.now() + 1, lim = 20;
+    const posts = (await db.prepare(`SELECT p.id, p.member_id, p.created_at, p.day, p.title, p.minutes, p.sets, p.note, p.photo_id, m.name
+      FROM sl_gposts p LEFT JOIN sl_gmembers m ON m.id = p.member_id WHERE p.group_id = ? AND p.created_at < ? ORDER BY p.created_at DESC LIMIT ?`).bind(g.id, before, lim).all()).results;
+    const ids = posts.map(p => p.id);
+    const reacts = ids.length ? (await db.prepare(`SELECT post_id, member_id, emoji FROM sl_greacts WHERE post_id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results : [];
+    for (const p of posts) {
+      const rs = reacts.filter(r => r.post_id === p.id);
+      p.reacts = Object.fromEntries(GEMOJI.map(e => [e, rs.filter(r => r.emoji === e).length]));
+      p.mine = rs.filter(r => r.member_id === me.id).map(r => r.emoji);
+      p.photo = p.photo_id ? `/api/gphoto/${p.photo_id}` : null; delete p.photo_id;
+      p.name = p.name || "Ex-membro";
+    }
+    const members = (await db.prepare("SELECT id, name, role, user_id IS NOT NULL AS account FROM sl_gmembers WHERE group_id = ? ORDER BY joined_at").bind(g.id).all()).results;
+    const ws = dayOk(a.p_week) ? a.p_week : "0000-00-00", ms = dayOk(a.p_month) ? a.p_month : "0000-00-00";
+    const days = (await db.prepare("SELECT member_id, day FROM sl_gposts WHERE group_id = ? AND day >= ? GROUP BY member_id, day").bind(g.id, ws < ms ? ws : ms).all()).results;
+    for (const m of members) { m.week = days.filter(d => d.member_id === m.id && d.day >= ws).length; m.month = days.filter(d => d.member_id === m.id && d.day >= ms).length; }
+    return {group: {name: g.name, invite: g.invite}, me: {id: me.id, name: me.name, role: me.role, account: !!me.user_id}, posts, members, more: posts.length === lim};
+  },
+  async g_post(db, a) {
+    const g = await groupByInvite(db, a.p_invite), me = await memberOf(db, a, g);
+    const title = String(a.p_title || "").trim().slice(0, 60), note = String(a.p_note || "").trim().slice(0, 280);
+    const minutes = Math.max(0, Math.min(600, parseInt(a.p_minutes) || 0)), sets = Math.max(0, Math.min(200, parseInt(a.p_sets) || 0));
+    const day = dayOk(a.p_day) ? a.p_day : new Date().toISOString().slice(0, 10);
+    if (!title && !note && !a.p_photo) fail("empty_post");
+    const recent = await db.prepare("SELECT COUNT(*) AS n FROM sl_gposts WHERE member_id = ? AND created_at > ?").bind(me.id, Date.now() - 864e5).first();
+    if (recent && recent.n >= 20) fail("too_many_posts");
+    let photoId = null; const stm = [];
+    if (a.p_photo) {
+      const mm = String(a.p_photo).match(/^data:(image\/(?:jpeg|webp|png));base64,([A-Za-z0-9+/=]+)$/);
+      if (!mm) fail("invalid_photo");
+      const bytes = Uint8Array.from(atob(mm[2]), c => c.charCodeAt(0));
+      if (bytes.length > 9e5) fail("photo_too_large");
+      photoId = randHex(16);
+      stm.push(db.prepare("INSERT INTO sl_gphotos (id, group_id, type, data) VALUES (?, ?, ?, ?)").bind(photoId, g.id, mm[1], bytes.buffer));
+    }
+    const id = crypto.randomUUID();
+    stm.push(db.prepare("INSERT INTO sl_gposts (id, group_id, member_id, created_at, day, title, minutes, sets, note, photo_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(id, g.id, me.id, Date.now(), day, title, minutes || null, sets || null, note, photoId));
+    await db.batch(stm);
+    return {id};
+  },
+  async g_react(db, a) {
+    const g = await groupByInvite(db, a.p_invite), me = await memberOf(db, a, g), e = String(a.p_emoji || "");
+    if (!GEMOJI.includes(e)) fail("invalid_emoji");
+    const p = await db.prepare("SELECT id FROM sl_gposts WHERE id = ? AND group_id = ?").bind(String(a.p_post || ""), g.id).first(); if (!p) fail("post_not_found");
+    const ex = await db.prepare("SELECT 1 AS x FROM sl_greacts WHERE post_id = ? AND member_id = ? AND emoji = ?").bind(p.id, me.id, e).first();
+    if (ex) await db.prepare("DELETE FROM sl_greacts WHERE post_id = ? AND member_id = ? AND emoji = ?").bind(p.id, me.id, e).run();
+    else await db.prepare("INSERT INTO sl_greacts (post_id, member_id, emoji) VALUES (?, ?, ?)").bind(p.id, me.id, e).run();
+    return {on: !ex};
+  },
+  async g_del_post(db, a) {
+    const g = await groupByInvite(db, a.p_invite), me = await memberOf(db, a, g);
+    const p = await db.prepare("SELECT id, member_id, photo_id FROM sl_gposts WHERE id = ? AND group_id = ?").bind(String(a.p_post || ""), g.id).first(); if (!p) fail("post_not_found");
+    if (p.member_id !== me.id && me.role !== "owner") fail("forbidden");
+    const stm = [db.prepare("DELETE FROM sl_gposts WHERE id = ?").bind(p.id), db.prepare("DELETE FROM sl_greacts WHERE post_id = ?").bind(p.id)];
+    if (p.photo_id) stm.push(db.prepare("DELETE FROM sl_gphotos WHERE id = ?").bind(p.photo_id));
+    await db.batch(stm); return true;
+  },
+  async g_leave(db, a) {
+    const g = await groupByInvite(db, a.p_invite), me = await memberOf(db, a, g);
+    if (me.role === "owner") fail("owner_cannot_leave");
+    await db.prepare("DELETE FROM sl_gmembers WHERE id = ?").bind(me.id).run(); return true;
+  },
+  async g_kick(db, a) {
+    const g = await groupByInvite(db, a.p_invite), me = await memberOf(db, a, g);
+    if (me.role !== "owner") fail("forbidden");
+    const id = String(a.p_member || ""); if (id === me.id) fail("forbidden");
+    await db.prepare("DELETE FROM sl_gmembers WHERE id = ? AND group_id = ?").bind(id, g.id).run(); return true;
+  },
+  async g_rename(db, a) {
+    const g = await groupByInvite(db, a.p_invite), me = await memberOf(db, a, g), name = cleanName(a.p_name);
+    if (me.role !== "owner") fail("forbidden"); if (name.length < 2) fail("invalid_name");
+    await db.prepare("UPDATE sl_groups SET name = ? WHERE id = ?").bind(name, g.id).run(); return true;
+  },
+  async g_delete(db, a) {
+    const g = await groupByInvite(db, a.p_invite), me = await memberOf(db, a, g);
+    if (me.role !== "owner") fail("forbidden");
+    await db.batch([
+      db.prepare("DELETE FROM sl_greacts WHERE post_id IN (SELECT id FROM sl_gposts WHERE group_id = ?)").bind(g.id),
+      db.prepare("DELETE FROM sl_gposts WHERE group_id = ?").bind(g.id), db.prepare("DELETE FROM sl_gphotos WHERE group_id = ?").bind(g.id),
+      db.prepare("DELETE FROM sl_gmembers WHERE group_id = ?").bind(g.id), db.prepare("DELETE FROM sl_groups WHERE id = ?").bind(g.id)]);
+    return true;
+  }
+};
+
 const reply = (status, body) => new Response(JSON.stringify(body), {status, headers: {"Content-Type": "application/json", "Cache-Control": "no-store"}});
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    if (/^\/g\/[a-z0-9]{4,32}\/?$/.test(url.pathname)) return env.ASSETS.fetch(new Request(new URL("/grupo", url), req)); // página do grupo
+    const ph = url.pathname.match(/^\/api\/gphoto\/([0-9a-f]{32})$/);
+    if (ph) {
+      await ensureSchema(env.DB);
+      const r = await env.DB.prepare("SELECT type, data FROM sl_gphotos WHERE id = ?").bind(ph[1]).first();
+      if (!r) return new Response("not found", {status: 404});
+      return new Response(r.data instanceof ArrayBuffer ? r.data : new Uint8Array(r.data), {headers: {"Content-Type": r.type, "Cache-Control": "private, max-age=31536000, immutable"}});
+    }
     const m = url.pathname.match(/^\/api\/([a-z_]+)$/);
     if (!m) return env.ASSETS.fetch(req);
     if (req.method !== "POST") return reply(405, {message: "method_not_allowed"});
-    const fn = API[m[1]] || pushAPI[m[1]];
+    const fn = API[m[1]] || pushAPI[m[1]] || GAPI[m[1]];
     if (!fn) return reply(404, {message: "not_found"});
     let args = {};
     try { const t = await req.text(); if (t.length > 1.5e6) return reply(413, {message: "too_large"}); args = t ? JSON.parse(t) : {}; } catch { return reply(400, {message: "bad_json"}); }

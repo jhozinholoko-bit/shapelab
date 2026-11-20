@@ -303,6 +303,13 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(51,191,24
 .sets{display:flex;flex-direction:column;gap:7px}
 .sets-h,.srow{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(0,1fr) 50px;gap:10px;align-items:center}
 .sets-h span{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);text-align:center}
+.grp-list{display:flex;flex-direction:column;gap:10px;margin-bottom:6px}
+.grp{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 16px;text-align:left;width:100%;color:inherit;font:inherit}
+.grp-av{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font:600 19px var(--f-disp);color:#fff;background:linear-gradient(135deg,var(--cer),var(--rose))}
+.grp-mid b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.grp-mid small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.grp-empty{padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.h2d{margin:2px 0 0;font-family:var(--f-disp);font-weight:600;font-size:22px;letter-spacing:-.02em}
+.grp-post{margin-top:14px}
 .stk{margin:22px -4px 4px;display:flex;flex-direction:column;gap:10px}
 .stk-h{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px}.stk-n{font:500 11px var(--f-mono);color:var(--muted);letter-spacing:.1em}
 .stk-rail{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 9% 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -824,7 +831,7 @@ img{max-width:100%}
     <button class="dk on" data-a="tab" data-t="fichas"><span class="mono">01</span>Fichas</button>
     <button class="dk" data-a="tab" data-t="treino"><span class="mono">02</span>Treino<i class="live" id="liveDot" hidden></i></button>
     <button class="dk" data-a="tab" data-t="historico"><span class="mono">03</span>Evolução</button>
-    <button class="dk" data-a="tab" data-t="galeria"><span class="mono">04</span>Diário</button>
+    <button class="dk" data-a="tab" data-t="galeria"><span class="mono">04</span>Grupos</button>
     
     <i class="dk-ind" id="dkInd" aria-hidden="true"></i>
   </div>
@@ -2401,9 +2408,48 @@ function nearest(photos, daysAgo) {
   return photos.reduce((b, p) => Math.abs(new Date(p.date) - target) < Math.abs(new Date(b.date) - target) ? p : b, photos[photos.length - 1]);
 }
 const camIcon = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
+/* ============ GRUPOS (feed e ranking ficam em /g/<convite>) ============ */
+let MYGROUPS = null, groupsErr = false;
+const hasGroupsApi = () => !!(window.SL && window.SL.groups);
+async function loadGroups(force) {
+  if (!hasGroupsApi()) return [];
+  if (MYGROUPS && !force) return MYGROUPS;
+  try { MYGROUPS = await window.SL.groups.mine(); groupsErr = false; } catch { groupsErr = true; MYGROUPS = MYGROUPS || []; }
+  return MYGROUPS;
+}
+const agoS = ms => { const s = (Date.now() - ms) / 1000; return s < 3600 ? `há ${Math.max(1, Math.floor(s / 60))} min` : s < 86400 ? `há ${Math.floor(s / 3600)} h` : `há ${Math.floor(s / 86400)} d`; };
+function groupsHtml() {
+  if (!hasGroupsApi()) return `<div class="pnl blk"><p class="kicker">Grupos</p><p class="st-msg">Os grupos funcionam no app publicado.</p></div>`;
+  const list = MYGROUPS || [];
+  return `<div class="grp-list">${MYGROUPS === null ? `<p class="kicker caret">Carregando grupos</p>` : list.map(g => `<button class="pnl grp" data-a="openGroup" data-inv="${esc(g.invite)}">
+      <span class="grp-av" aria-hidden="true">${esc(String(g.name).trim().slice(0, 1).toUpperCase())}</span>
+      <span class="grp-mid"><b>${esc(g.name)}</b><small>${g.members} ${g.members === 1 ? "pessoa" : "pessoas"}${g.last_post ? ` · último post ${agoS(g.last_post)}` : " · sem posts ainda"}${g.role === "owner" ? " · dono" : ""}</small></span><span class="dl-go">Abrir ›</span></button>`).join("")}
+    ${groupsErr ? `<p class="meta">Não consegui carregar seus grupos agora.</p>` : ""}
+    ${MYGROUPS !== null && !list.length ? `<div class="pnl grp-empty"><p class="lede" style="margin:0">Treine junto com a galera</p><p class="meta">Crie um grupo, mande o link e cada um posta a foto e o treino do dia. Tem ranking da semana e do mês. Quem você convidar não precisa criar conta.</p></div>` : ""}
+    <button class="b b-rose w" data-a="newGroup">＋ Criar grupo</button></div>`;
+}
+function openNewGroup() {
+  openSheet("Novo grupo", `<label class="fld"><span>Nome do grupo</span><input id="ngName" maxlength="40" placeholder="Ex.: Shape 2026, Galera do treino"></label>
+    <p class="meta">Depois de criar, é só mandar o link de convite. Só entra quem tiver o link.</p>`,
+    `<button class="b b-pri w" data-a="newGroupGo">Criar grupo ▸</button>`);
+  setTimeout(() => { const i = $("#ngName"); i && i.focus(); }, 60);
+}
+/* leva um treino salvo para o grupo: o post abre já preenchido */
+function postToGroup(sessId, inv) {
+  const x = S.sessions.find(z => z.id === sessId); if (!x) return;
+  const list = MYGROUPS || [];
+  if (!inv && list.length > 1) {
+    openSheet("Postar em qual grupo?", `<div class="menu">${list.map(g => `<button class="mi" data-a="postGroup" data-id="${esc(sessId)}" data-inv="${esc(g.invite)}"><span class="mi-ic">${esc(String(g.name).slice(0, 1).toUpperCase())}</span><span><b>${esc(g.name)}</b><small>${g.members} ${g.members === 1 ? "pessoa" : "pessoas"}</small></span><span class="mi-go">›</span></button>`).join("")}</div>`);
+    return;
+  }
+  const g = inv || (list[0] && list[0].invite); if (!g) return;
+  try { sessionStorage.setItem("sl_gdraft", JSON.stringify({title: x.routineName, minutes: String(x.durationMin || ""), sets: String((x.exercises || []).reduce((t, e) => t + e.sets.length, 0) || "")})); } catch {}
+  location.href = "/g/" + g;
+}
 async function renderGaleria() {
   const v = $("#v-galeria");
-  if (!PHOTOS) v.innerHTML = `<div class="sh"><div class="sh-t"><p class="kicker">Seus treinos e <em>fotos</em></p><h1>Diário</h1></div></div><p class="kicker caret">Carregando</p>`;
+  if (MYGROUPS === null) loadGroups().then(() => { if (tab === "galeria") renderGaleria(); });
+  if (!PHOTOS) v.innerHTML = `<div class="sh"><div class="sh-t"><p class="kicker">Treinar <em>junto</em></p><h1>Grupos</h1></div></div>${groupsHtml()}<p class="kicker caret">Carregando</p>`;
   const photos = await loadPhotos();
   if (tab !== "galeria") return;
   const ss = S.sessions;
@@ -2429,7 +2475,8 @@ async function renderGaleria() {
   }
   const groups = {};
   ss.forEach(x => { const k = new Date(x.date).toLocaleDateString("pt-BR", {month: "long", year: "numeric"}); (groups[k] = groups[k] || []).push(x); });
-  v.innerHTML = `<div class="sh"><div class="sh-t"><p class="kicker">Seus treinos e <em>fotos</em></p><h1>Diário</h1></div><span class="kicker"><b>${ss.length}</b> treino${ss.length === 1 ? "" : "s"} · <b>${photos.length}</b> foto${photos.length === 1 ? "" : "s"}</span></div>
+  v.innerHTML = `<div class="sh"><div class="sh-t"><p class="kicker">Treinar <em>junto</em></p><h1>Grupos</h1></div></div>${groupsHtml()}
+    <div class="sh" style="margin-top:26px"><div class="sh-t"><p class="kicker">Seus treinos e <em>fotos</em></p><h2 class="h2d">Diário</h2></div><span class="kicker"><b>${ss.length}</b> treino${ss.length === 1 ? "" : "s"} · <b>${photos.length}</b> foto${photos.length === 1 ? "" : "s"}</span></div>
     ${cmp}
     ${ss.length ? Object.entries(groups).map(([m, list]) => `<p class="flt-l" style="margin:10px 0 10px">${esc(m)}</p><div class="stack" style="margin-bottom:14px">${list.map(x => {
       const ph = bySess[x.id], nSets = (x.exercises || []).reduce((t, e) => t + e.sets.length, 0);
@@ -2450,7 +2497,7 @@ async function openSess(id) {
         <div class="grid2"><button class="b" data-a="phPick">Trocar foto</button><button class="b b-bad" data-a="phDel" data-id="${ph.id}">Remover foto</button></div>`
        : `<p class="kicker">Foto deste dia</p><p class="meta">Tirou uma foto depois desse treino? Adicione aqui para entrar no seu antes × depois.</p><button class="b b-pri w" data-a="phPick">+ Adicionar foto</button>`}
        <input type="file" id="phFile" accept="image/*" hidden></div>
-     <button class="b b-rose w" data-a="sessStk" data-id="${x.id}">↗ Compartilhar este treino</button>
+     <div class="grid2"><button class="b b-rose" data-a="sessStk" data-id="${x.id}">↗ Sticker</button><button class="b" data-a="postGroup" data-id="${x.id}">◎ Postar no grupo</button></div>
      <div class="pnl blk" style="gap:6px"><p class="kicker">O que você fez</p>
        ${(x.exercises || []).map(e => `<div class="mrow"><span style="font-family:var(--f-ui);font-size:14px;color:var(--fg);white-space:normal">${esc(e.name)}</span><span class="vals" style="text-align:right">${e.sets.map(z => `${fmt(z.load)}×${z.reps}`).join(" · ")}</span></div>`).join("")}
        ${x.skipped && x.skipped.length ? `<p class="meta">Pulados: ${esc(x.skipped.join(", "))}</p>` : ""}</div>
@@ -3603,6 +3650,7 @@ function finishWorkout() {
        : `<p class="st-msg ${after.cls}" style="text-align:center">${after.trainedToday ? "Hoje já tinha contado na ofensiva. Treino extra registrado." : esc(after.msg)}</p>`}
      <div class="readouts"><div class="pnl ro"><small>Duração</small><b>${s.durationMin}<span>min</span></b></div><div class="pnl ro"><small>Séries</small><b>${nSets}</b></div><div class="pnl ro"><small>Volume</small><b>${fmtBig(s.volume)}<span>${U()}</span></b></div></div>
      ${prs.length ? `<div class="pnl rose-edge ai-out"><span class="tagx">REC</span><h3>Novos recordes</h3><ul>${prs.map(p => `<li>${esc(p.name)} ▸ ${fmt(p.prev)} → <b style="color:var(--rose-hi)">${fmt(p.now)}${U()}</b></li>`).join("")}</ul></div>` : `<p class="meta">Treino salvo no Diário. Depois, se quiser, abra ele lá e adicione uma foto.</p>`}
+     ${hasGroupsApi() ? `<button class="b w grp-post" data-a="postGroup" data-id="${s.id}">◎ Postar no grupo</button>` : ""}
      ${stkSection(stkData(s, prs, extended ? after : (after.streak > 0 ? after : null)))}`,
     `<button class="b b-pri" data-a="sheetBack">Fechar</button>`);
   stkMount();
@@ -3653,7 +3701,7 @@ function renderHistorico() {
   const names = Object.keys(cnt).filter(n => cnt[n] >= 2).sort((a, b) => cnt[b] - cnt[a]);
   if (!names.includes(evoEx)) evoEx = names[0] || "";
   if (names.length) h += `<div class="pnl blk evo"><div><p class="kicker">Sua força em cada exercício</p><p class="meta" style="margin-top:4px">A maior carga que você usou em cada treino. Se a linha sobe, você está ficando mais forte.</p></div><label class="fld"><span>Exercício</span><select id="evoSel" data-f="evo">${names.map(n => `<option ${n === evoEx ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label><div id="evoChart">${evoChart(evoEx)}</div></div>`;
-  h += `<button class="b w" data-a="tab" data-t="galeria">Ver histórico de treinos no Diário ›</button>`;
+  h += `<button class="b w" data-a="tab" data-t="galeria">Ver histórico de treinos (aba Grupos) ›</button>`;
   $("#v-historico").innerHTML = h;
 }
 function evoChart(name) {
@@ -3758,6 +3806,19 @@ const actions = {
   rview: b => { rv.open = ""; openRView(b.dataset.id); },
   rvOpen: b => { rv.open = rv.open === b.dataset.k ? "" : b.dataset.k; const s = $("#sheetBody").scrollTop; openRView(rv.id); $("#sheetBody").scrollTop = s; },
   stkGo: b => stkGo(+b.dataset.i),
+  openGroup: b => { location.href = "/g/" + b.dataset.inv; },
+  newGroup: () => openNewGroup(),
+  newGroupGo: async b => {
+    const n = ($("#ngName").value || "").trim(); if (n.length < 2) { toast("Dê um nome com pelo menos 2 letras."); return; }
+    b.disabled = true;
+    try { const g = await window.SL.groups.create(n); MYGROUPS = null; location.href = "/g/" + g.invite; }
+    catch { b.disabled = false; toast("Não consegui criar o grupo. Confira a internet."); }
+  },
+  postGroup: async b => {
+    const id = b.dataset.id, inv = b.dataset.inv;
+    if (!inv) { await loadGroups(); if (!(MYGROUPS || []).length) { toast("Você ainda não está em nenhum grupo. Crie um na aba Grupos."); return; } }
+    postToGroup(id, inv);
+  },
   sessStk: b => openSessStickers(b.dataset.id),
   stkPhrase: () => { STK.phrase++; stkRender(STK_T.findIndex(t => t.id === "type")); },
   stkCopy: () => stkCopy(),
@@ -3991,7 +4052,7 @@ initCaps();
 })();
 
 };</script>
-<script>window.SL_VERSION = "20261119215824";</script>
+<script>window.SL_VERSION = "20261119220650";</script>
 <script src="config.js"></script>
 <script src="shapelab-api.js"></script>
 </body>
